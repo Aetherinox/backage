@@ -1,9 +1,11 @@
-name: build
+name: '📦 Package › Build'
+run-name: '📦 Package › Build'
 
 on:
     push:
         branches:
             - master
+            - main
         tags:
             - v*
 

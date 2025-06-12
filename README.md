@@ -20,22 +20,6 @@ If this is [`ipitio/backage`](https://github.com/ipitio/backage), all you have t
 
 Otherwise, if this is a fork, you'd prefer an alternative method, or your packages weren't added to the [index](https://github.com/aetherinox/backage/tree/index) after a day, enter the case-sensitive name of each missing user or organization on a new line at the top of `owners.txt` [here](https://github.com/aetherinox/backage/edit/master/owners.txt) and make a pull request. Please submit just the name(s) -- ids, repos, and packages will be found automatically!
 
-The format for the `owners.txt` file is:
-
-```
-github_user_id/github_user_name
-```
-
-You can find your github user ID by going to:
-- https://api.github.com/users/YOURUSERNAME
-
-```json
-{
-  "login": "aetherinox",
-  "id": 118329232,
-}
-```
-
 New packages won't be added until *all* existing ones are refreshed; you should also create an independent instance that'll update faster and more frequently, up to hourly. Simply fork just the `master` branch, enable Actions from its tab and all disabled workflows, and use the [Alternative URL](#alternative-url) when it changes. Your own packages will be picked up automatically! If you need to edit `owners.txt`, do so after the first run. This centralized repo will then serve as a backup for all subsets of packages not in `optout.txt`.
 
 ## The Endpoint

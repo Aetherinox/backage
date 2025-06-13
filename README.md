@@ -14,6 +14,12 @@
 
 Ever wish you could show npm, gem, mvn, Gradle, NuGet, or GHCR badges for GitHub Packages? Or just query for the download counts? This endpoint makes that possible, using only free GitHub resources; the API doesn't, and has never, exposed the public metadata that other registries provide.
 
+<br />
+
+---
+
+<br />
+
 ## Getting Started
 
 If this is [`ipitio/backage`](https://github.com/ipitio/backage), all you have to do is **star the repo to get your public packages added!** The service's circular priority queue will update the [closed-loop system](https://github.com/aetherinox/backage/releases/latest) with them within the next few hours. Additionally watching and forking the repo, and following the owner, are ways to increase their priority. Yes, I know, but these are the graphs GitHub has available.
@@ -21,6 +27,17 @@ If this is [`ipitio/backage`](https://github.com/ipitio/backage), all you have t
 Otherwise, if this is a fork, you'd prefer an alternative method, or your packages weren't added to the [index](https://github.com/aetherinox/backage/tree/index) after a day, enter the case-sensitive name of each missing user or organization on a new line at the top of `owners.txt` [here](https://github.com/aetherinox/backage/edit/master/owners.txt) and make a pull request. Please submit just the name(s) -- ids, repos, and packages will be found automatically!
 
 New packages won't be added until *all* existing ones are refreshed; you should also create an independent instance that'll update faster and more frequently, up to hourly. Simply fork just the `master` branch, enable Actions from its tab and all disabled workflows, and use the [Alternative URL](#alternative-url) when it changes. Your own packages will be picked up automatically! If you need to edit `owners.txt`, do so after the first run. This centralized repo will then serve as a backup for all subsets of packages not in `optout.txt`.
+
+<br />
+
+> [!WARNING]
+> Your Github profile must be set to **public** in order for this repo to fetch package information.
+
+<br />
+
+---
+
+<br />
 
 ## The Endpoint
 
@@ -92,6 +109,8 @@ Once the packages you're interested in have been added, replace the parameters w
 
 </details>
 
+<br />
+
 ### Query Syntax
 
 <details>
@@ -158,6 +177,8 @@ As can packages in `owner[/repo]/.xml` files:
 
 </details>
 
+<br />
+
 ### Alternative URL
 
 ```py
@@ -165,6 +186,12 @@ https://github.com/aetherinox/backage/raw/index/OWNER/[REPO/[PACKAGE]].FORMAT
 ```
 
 The endpoint is also available here!
+
+<br />
+
+---
+
+<br />
 
 ## JSON2XML Proxy
 

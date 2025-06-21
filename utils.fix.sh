@@ -123,7 +123,7 @@ if [[ $script_dryrun = false ]]; then
     #   set execute on run files
     # #
 
-    find ./ -name 'run' -print -exec sudo chmod +x {} \;
+    find ./ -name 'run' -o -name "backage.sh" -print -exec sudo chmod +x {} \;
 
     # #
     #   fix CRLF (Windows) to LF (Linux) line-endings

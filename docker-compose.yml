@@ -28,8 +28,7 @@ services:
 
     backage:
         container_name: backage
-        image: aetherinox/backage:latest
-      # image: ghcr.io/aetherinox/backage:latest                # Image: Github
+        image: ghcr.io/aetherinox/backage:latest                # Image: Github
       # image: aetherinox/backage:latest                        # Image: Dockerhub
       # image: backage:latest                                   # Image: Locally built
         hostname: backage

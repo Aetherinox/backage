@@ -72,7 +72,7 @@ let FILE_CFG;
 
 const envAppRelease = process.env.IMAGE_RELEASE || 'stable';
 const envGitSHA1 = process.env.IMAGE_SHA1 || '0000000000000000000000000000000000000000';
-const envAppProjectUrl = process.env.URL_REPO || 'https://github.com/ipitio/backage';
+const envAppProjectUrl = process.env.APP_REPO || 'https://github.com/ipitio/backage';
 const envRepoProto = process.env.GITHUB_PROTO || 'https';
 const envRepoHost = process.env.GITHUB_HOST || 'github.com';
 const envRepoUser = process.env.GITHUB_OWNER || 'ipitio';
@@ -82,10 +82,10 @@ const envApiKey = process.env.API_KEY || null;
 const envWebIP = process.env.WEB_IP || '0.0.0.0';
 const envWebPort = process.env.WEB_PORT || `4124`;
 const envWebFolder = process.env.WEB_FOLDER || 'www';
-const envWebEncoding = process.env.WEB_ENCODING || 'deflate, br';
 const envProxyHeader = process.env.WEB_PROXY_HEADER || 'x-forwarded-for';
 const envHealthTimer = process.env.HEALTH_TIMER || 600000;
-const envTaskCronSync = process.env.TASK_CRON_SYNC || '0 */12 * * *';
+const envTaskCronNotice = process.env.TASK_CRON_NOTICE || '0 */12 * * *';
+const envTaskCronSync = process.env.TASK_CRON_SYNC || '*/30 * * * *';
 const LOG_LEVEL = process.env.LOG_LEVEL || 4;
 
 /*
@@ -672,11 +672,10 @@ async function initialize()
             we could just loop process.env; but that will show every container env var. We just want this app
         */
 
-        Log.debug( `.env`, chalk.yellow( `[assigner]` ), chalk.white( `⚙️` ), chalk.blueBright( `<name>` ), chalk.gray( `URL_REPO` ), chalk.blueBright( `<value>` ), chalk.gray( `${ envAppProjectUrl }` ) );
+        Log.debug( `.env`, chalk.yellow( `[assigner]` ), chalk.white( `⚙️` ), chalk.blueBright( `<name>` ), chalk.gray( `APP_REPO` ), chalk.blueBright( `<value>` ), chalk.gray( `${ envAppProjectUrl }` ) );
         Log.debug( `.env`, chalk.yellow( `[assigner]` ), chalk.white( `⚙️` ), chalk.blueBright( `<name>` ), chalk.gray( `WEB_IP` ), chalk.blueBright( `<value>` ), chalk.gray( `${ envWebIP }` ) );
         Log.debug( `.env`, chalk.yellow( `[assigner]` ), chalk.white( `⚙️` ), chalk.blueBright( `<name>` ), chalk.gray( `WEB_PORT` ), chalk.blueBright( `<value>` ), chalk.gray( `${ envWebPort }` ) );
         Log.debug( `.env`, chalk.yellow( `[assigner]` ), chalk.white( `⚙️` ), chalk.blueBright( `<name>` ), chalk.gray( `WEB_FOLDER` ), chalk.blueBright( `<value>` ), chalk.gray( `${ envWebFolder }` ) );
-        Log.debug( `.env`, chalk.yellow( `[assigner]` ), chalk.white( `⚙️` ), chalk.blueBright( `<name>` ), chalk.gray( `WEB_ENCODING` ), chalk.blueBright( `<value>` ), chalk.gray( `${ envWebEncoding }` ) );
         Log.debug( `.env`, chalk.yellow( `[assigner]` ), chalk.white( `⚙️` ), chalk.blueBright( `<name>` ), chalk.gray( `WEB_PROXY_HEADER` ), chalk.blueBright( `<value>` ), chalk.gray( `${ envProxyHeader }` ) );
         Log.debug( `.env`, chalk.yellow( `[assigner]` ), chalk.white( `⚙️` ), chalk.blueBright( `<name>` ), chalk.gray( `API_KEY` ), chalk.blueBright( `<value>` ), chalk.gray( `${ envApiKey }` ) );
         Log.debug( `.env`, chalk.yellow( `[assigner]` ), chalk.white( `⚙️` ), chalk.blueBright( `<name>` ), chalk.gray( `HEALTH_TIMER` ), chalk.blueBright( `<value>` ), chalk.gray( `${ envHealthTimer }` ) );
@@ -1132,7 +1131,7 @@ cron.schedule( envTaskCronSync, async() =>
     should show every 30 minutes
 */
 
-cron.schedule( '*/30 * * * *', async() =>
+cron.schedule( envTaskCronNotice, async() =>
 {
     const validation = crons.validateCronExpression( envTaskCronSync );
     if ( !validation.valid )

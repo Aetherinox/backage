@@ -20,7 +20,13 @@ source "/usr/bin/helpers/logger/logger.sh"
 : "${DIR_BUILD:=/usr/src/web}"
 : "${DIR_RUN:=/usr/bin/web}"
 : "${DIR_APP:=/app}"
+
+# #
+#   define > locals
+# #
+
 bHasError="false"
+: "${bFailureMsg:=unknown}"
 
 # #
 #   distro info
@@ -54,8 +60,9 @@ if [ -d "/var/run/s6/container_environment/" ]; then
     printf "$ip_gateway" > /var/run/s6/container_environment/IP_GATEWAY
     printf "$ip_container" > /var/run/s6/container_environment/IP_CONTAINER
 else
-    printf '%-29s %-65s\n' "  ${c[redl]}Backage${c_end}" "${c_end}${c[redl]}Error:${c_end} Cannot generate s6-overlay env files; directory ${c[redl]}/var/run/s6/container_environment/${c_end} does not exist${c_end}"
+    printf '%-29s %-65s\n' "  ${c_red_l}Backage${c_end}" "${c_end}${c_red_l}Error:${c_end} Cannot generate s6-overlay env files; directory ${c_red_l}/var/run/s6/container_environment/${c_end} does not exist${c_end}"
     bHasError="true"
+    bFailureMsg="Could not initialize s6-overlay files"
 fi
 
 # #
@@ -73,39 +80,78 @@ log_info "core" \
     "${c_blue_l}<ipContainer>" "${c_gray}${ip_container}${c_end}"
 
 # #
-#   if GITHUB_ACTOR not specified; use GITHUB_OWNER
+#   env var check > token
 # #
 
-if [ -z "${GITHUB_ACTOR}" ]; then
-    GITHUB_ACTOR="${GITHUB_OWNER:-ipitio}"
-    export "$GITHUB_ACTOR"
-fi
-
-# #
-#   Get Git Info
-# #
-
-if [ -z "${GITHUB_OWNER}" ] || [ "${GITHUB_OWNER}" == "unknown" ] ||
-   [ -z "${GITHUB_EMAIL}" ] || [ "${GITHUB_EMAIL}" == "unknown" ] ||
-   [ -z "${GITHUB_TOKEN}" ] || [ "${GITHUB_TOKEN}" == "unknown" ]
-then
+if [ -z "${GITHUB_TOKEN}" ] || [ "${GITHUB_TOKEN}" == "" ]; then
     log_error "core" \
         "${c_yellow_l}[svcsdotd]${c_end}" \
         "${c_red_l}❌${c_end}" \
-        "${c_red_l}<msg>" "${c_gray}Must specify Git env vars; ${c_red_l}\${GITHUB_OWNER}${c_gray}, ${c_red_l}\${GITHUB_EMAIL}${c_gray}, ${c_red_l}\${GITHUB_TOKEN}${c_gray} missing or invalid${c_end}"
+        "${c_red_l}<msg>" "${c_gray}Must specify Git ${c_red_l}\${GITHUB_TOKEN}${c_gray} personal access token; missing or invalid${c_end}"
 
     bHasError="true"
+    bFailureMsg="Missing env var; ${c_red_l}\$GITHUB_TOKEN${c_end}"
+fi
+
+# #
+#   env var check > owner && actor
+# #
+
+if [ -z "$GITHUB_OWNER" ] && [ -z "$GITHUB_ACTOR" ]; then
+    log_error "core" \
+        "${c_yellow_l}[svcsdotd]${c_end}" \
+        "${c_red_l}❌${c_end}" \
+        "${c_red_l}<msg>" \
+        "${c_gray}Must specify Git env var ${c_red_l}\${GITHUB_OWNER}${c_gray} and ${c_red_l}\${GITHUB_ACTOR}${c_gray}; missing or invalid${c_end}"
+
+    bHasError="true"
+    bFailureMsg="Missing one or the other env vars; ${c_red_l}\$GITHUB_OWNER${c_end} or ${c_red_l}\$GITHUB_ACTOR${c_end}"
+fi
+
+# #
+#   if we are missing either GITHUB_OWNER or GITHUB_ACTOR; set both to have the same value
+# #
+
+if [ -n "$GITHUB_OWNER" ] && [ -z "$GITHUB_ACTOR" ]; then
+    GITHUB_ACTOR="$GITHUB_OWNER"
+    export "$GITHUB_ACTOR"
+
+    log_notice "core" \
+        "${c_yellow_l}[svcsdotd]${c_end}" \
+        "${c_yellow_l}📌${c_end}" \
+        "${c_yellow_l}<msg>" "${c_gray}env var ${c_yellow_l}\${GITHUB_ACTOR}${c_gray} empty; setting ${c_yellow_l}\${GITHUB_ACTOR}=${c_gray}${GITHUB_OWNER}${c_end}"
+
+elif [ -z "$GITHUB_OWNER" ] && [ -n "$GITHUB_ACTOR" ]; then
+    GITHUB_OWNER="$GITHUB_ACTOR"
+    export "$GITHUB_OWNER"
+
+    log_notice "core" \
+        "${c_yellow_l}[svcsdotd]${c_end}" \
+        "${c_yellow_l}📌${c_end}" \
+        "${c_yellow_l}<msg>" "${c_gray}env var ${c_yellow_l}\${GITHUB_OWNER}${c_gray} empty; setting it to value of ${c_yellow_l}\${GITHUB_ACTOR}=${c_gray} which is ${c_yellow_l}\${GITHUB_OWNER}=${c_gray}${GITHUB_ACTOR}${c_end}"
+fi
+
+# #
+#   env var check > email; set to username@noreply
+# #
+
+if [ -z "${GITHUB_EMAIL}" ]; then
+    log_notice "core" \
+        "${c_yellow_l}[svcsdotd]${c_end}" \
+        "${c_yellow_l}📌${c_end}" \
+        "${c_yellow_l}<msg>" "${c_yellow}Optional:${c_gray} Env var ${c_yellow_l}\${GITHUB_EMAIL}${c_gray} not set; defaulting to:${c_end}" \
+        "${c_yellow_l}<value>" "${c_gray}${GITHUB_ACTOR}@users.noreply.github.com${c_end}"
 fi
 
 # #
 #   Git Signing Key
 # #
 
-if [ -z "${GITHUB_SIGNINGKEY}" ] || [ "${GITHUB_SIGNINGKEY}" == "unknown" ]; then
-    log_warn "core" \
+if [ -z "${GITHUB_SIGNINGKEY}" ]; then
+    log_notice "core" \
         "${c_yellow_l}[svcsdotd]${c_end}" \
-        "${c_yellow_l}⚠️${c_end}" \
-        "${c_yellow_l}<msg>" "${c_yellow}Optional:${c_gray} No gpg signing key specified, no commits will be signed; set ${c_yellow_l}\${GITHUB_SIGNINGKEY}${c_gray} to set one${c_end}"
+        "${c_yellow_l}📌${c_end}" \
+        "${c_yellow_l}<msg>" "${c_yellow}Optional:${c_gray} No gpg signing key specified, to sign commits, set ${c_yellow_l}\${GITHUB_SIGNINGKEY}${c_gray}${c_end}"
 fi
 
 # #
@@ -120,6 +166,7 @@ if [ "$bHasError" = "false" ]; then
             "${c_red_l}<msg>" "${c_gray}Cannot continue; env var ${c_red_l}\${DIR_BUILD}${c_gray} missing or invalid${c_end}"
 
         bHasError="true"
+        bFailureMsg="Missing env var; ${c_red_l}\$DIR_BUILD${c_end}"
     else
         if [ -d "${DIR_BUILD}" ]; then
             log_info "core" \
@@ -149,6 +196,7 @@ if [ "$bHasError" = "false" ]; then
                     "${c_red_l}<msg>" "${c_gray}Failed to create build directory ${c_red_l}${DIR_BUILD}${c_gray}; aborting setup${c_end}"
 
                 bHasError="true"
+                bFailureMsg="Could not create build directory ${c_red_l}${DIR_BUILD}${c_end}"
             fi
         fi
     fi
@@ -166,6 +214,7 @@ if [ "$bHasError" = "false" ]; then
             "${c_red_l}<msg>" "${c_gray}Cannot continue; env var ${c_red_l}\${DIR_RUN}${c_gray} missing${c_end}"
 
         bHasError="true"
+        bFailureMsg="env variable missing; ${c_red_l}${DIR_RUN}${c_end}"
     elif [ -d "${DIR_RUN}" ]; then
         log_info "core" \
             "${c_yellow_l}[svcsdotd]${c_end}" \
@@ -195,6 +244,7 @@ if [ "$bHasError" = "false" ]; then
                 "${c_red_l}<directory>" "${c_gray}${DIR_RUN}${c_end}"
 
             bHasError="true"
+            bFailureMsg="failed to create run directory ${c_red_l}${DIR_RUN}${c_end}"
         fi
     fi
 fi
@@ -211,6 +261,7 @@ if [ "$bHasError" = "false" ]; then
             "${c_red_l}<msg>" "${c_gray}Cannot continue; env var ${c_red_l}\${DIR_APP}${c_gray} missing${c_end}"
 
         bHasError="true"
+        bFailureMsg="env variable missing; ${c_red_l}\${DIR_APP}${c_end}"
     else
         if [ -d "$DIR_APP" ]; then
             log_info "core" \
@@ -241,6 +292,7 @@ if [ "$bHasError" = "false" ]; then
                     "${c_red_l}<directory>" "${c_gray}${DIR_APP}${c_end}"
 
                 bHasError="true"
+                bFailureMsg="failed to create app directory; ${c_red_l}${DIR_APP}${c_end}"
             fi
         fi
     fi
@@ -289,6 +341,7 @@ if [ "$bHasError" = "false" ]; then
         fi
 
         bHasError="true"
+        bFailureMsg="directories missing; ${c_red_l}${DIR_BUILD}${c_end} or ${c_red_l}${DIR_RUN}${c_end}"
     fi
 fi
 
@@ -325,8 +378,8 @@ if [ "$bHasError" = "false" ]; then
                 "${c_yellow_l}[svcsdotd]${c_end}" \
                 "${c_blue_l}ℹ️${c_end}" \
                 "${c_blue_l}<msg>" "${c_gray}Valid env variables for repo name and user specified${c_end}" \
-                "${c_blue_l}<env:GITHUB_OWNER>" "${c_gray}${GITHUB_OWNER}${c_end}" \
-                "${c_blue_l}<env:GITHUB_REPO>" "${c_gray}${GITHUB_REPO}${c_end}"
+                "${c_blue_l}<\$GITHUB_OWNER>" "${c_gray}${GITHUB_OWNER}${c_end}" \
+                "${c_blue_l}<\$GITHUB_REPO>" "${c_gray}${GITHUB_REPO}${c_end}"
 
             log_info "core" \
                 "${c_yellow_l}[svcsdotd]${c_end}" \
@@ -344,6 +397,7 @@ if [ "$bHasError" = "false" ]; then
                 "${c_red_l}<msg>" "${c_gray}Cannot clone repo; did not specify env vars ${c_red_l}${GITHUB_OWNER}${c_gray} and ${c_red_l}${GITHUB_REPO}${c_gray}; aborting${c_end}"
 
             bHasError="true"
+            bFailureMsg="env variable missing; ${c_red_l}\${GITHUB_OWNER}${c_end} or ${c_red_l}\${GITHUB_REPO}${c_end}"
         fi
     else
         log_error "core" \
@@ -353,6 +407,7 @@ if [ "$bHasError" = "false" ]; then
             "${c_red_l}<directory>" "${c_gray}${DIR_APP}${c_end}" \
 
         bHasError="true"
+        bFailureMsg="run directory does not exist; ${c_red_l}${DIR_APP}${c_end}"
     fi
 fi
 
@@ -391,7 +446,7 @@ if [ "$bHasError" = "false" ]; then
     done <<EOF
 user.name, ${GITHUB_OWNER}
 user.email, ${GITHUB_EMAIL}
-user.signingkey, ${GITHUB_SIGNINGKEY}
+user.signingKey, ${GITHUB_SIGNINGKEY}
 gpg.program, /${USER0}/bin/gpg.sh
 commit.gpgsign, ${GITHUB_GPGSIGN}
 credential.helper, store
@@ -458,6 +513,7 @@ if [ "$bHasError" = "false" ]; then
             "${c_red_l}<package>" "${c_gray}npm${c_end}"
 
         bHasError="true"
+        bFailureMsg="node package missing; ${c_red_l}npm${c_end}"
     else
         if ! cd "$DIR_RUN"; then
 
@@ -468,6 +524,7 @@ if [ "$bHasError" = "false" ]; then
                 "${c_red_l}<folder>" "${c_gray}${DIR_RUN}${c_end}"
 
             bHasError="true"
+            bFailureMsg="failed to change to run directory; ${c_red_l}${DIR_RUN}${c_end}"
         fi
 
         log_ok "core" \
@@ -493,13 +550,20 @@ fi
 # #
 
 if [ "$bHasError" = "false" ]; then
-    printf '%-29s %-65s\n' "  ${c[bluel]}Setup${c_end}" "${c_end}${c[greenl]}Successfully finished initializing script${c_end}"
+    printf '%-29s %-65s\n' "  ${c_blue_l}Setup${c_end}" "${c_end}${c_green_l}Successfully finished initializing script ${c_end}"
 else
+    echo
     printf '%-29s %-65s\n' "" ""
-    printf '%-29s %-65s\n' "  ${c[redl]}ERROR${c_end}" "${c_end}Fatal errors were detected${c_end}"
-    printf '%-29s %-65s\n' "  ${c[redl]}${c_end}" "${c_end}The run script detected that certain steps failed. This app will not${c_end}"
-    printf '%-29s %-65s\n' "  ${c[redl]}${c_end}" "${c_end}work properly. Address any errors in console, and restart the container.${c_end}"
+    printf '%-29s %-65s\n' "  ${c_red_l}ERROR${c_end}" "${c_end}Fatal errors were detected${c_end}"
+    printf '%-29s %-65s\n' "  ${c_red_l}${c_end}" "${c_end}The run script detected that certain steps failed. This app will not ${c_end}"
+    printf '%-29s %-65s\n' "  ${c_red_l}${c_end}" "${c_end}work properly. Address any errors in console, and restart the container. ${c_end}"
     printf '%-29s %-65s\n' "" ""
-    printf '%-29s %-65s\n' "  ${c[redl]}${c_end}" "${c_end}Ensure you have provided the correct environment variables in your${c_end}"
-    printf '%-29s %-65s\n' "  ${c[redl]}${c_end}" "${c_end}${c[bluel]}docker run${c_end} command, or ${c[bluel]}docker-compose.yml.${c_end}"
+    printf '%-29s %-65s\n' "  ${c_red_l}${c_end}" "${c_end}Ensure you have provided the correct environment variables in your ${c_end}"
+    printf '%-29s %-65s\n' "  ${c_red_l}${c_end}" "${c_end}${c_blue_l}docker run${c_end} command, or ${c_blue_l}docker-compose.yml. ${c_end}"
+    printf '%-29s %-65s\n' "" ""
+    printf '%-29s %-65s\n' "  ${c_red_l}${c_end}" "${c_red_l}Error Message: ${c_end}"
+    printf '%-29s %-65s\n' "  ${c_red_l}${c_end}" "${c_end}${bFailureMsg} ${c_end}"
+    printf '%-29s %-65s\n' "" ""
+    echo
 fi
+

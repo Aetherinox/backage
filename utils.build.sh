@@ -10,7 +10,7 @@
 #   @usage                ./utils.build.sh --help
 #                         ./utils.build.sh --version 2025.6.20 --distro noble --arch amd64 --registry local
 #                         ./utils.build.sh --version 2025.6.20 --distro noble --arch amd64 --registry local --dockerfile CustomDockerfile
-#                         ./utils.build.sh --version 2025.6.20 --distro noble --arch amd64 --registry local -name backage --release beta --registry github --author Aetherinox --network default
+#                         ./utils.build.sh --version 2025.6.20 --distro noble --arch amd64 --registry local --name backage --release beta --registry github --author Aetherinox --network default
 #                         ./utils.build.sh --restart
 #                         ./utils.build.sh --restart --env ./.env,.anotherEnv,third.env
 #                         ./utils.build.sh --dryrun
@@ -224,7 +224,7 @@ image_version_date_biweekly=$(date -u +%-Y.%-m).$((($(date -u +%-d)-1)/14))     
 image_version_date_quarterly=$(date -u +%-Y.%-m).$((($(date -u +%-d)-1)/7))         #  2025.6.[0,1,2,3,4]
 image_build_id=$(tr -dc A-Fa-f0-9 </dev/urandom | head -c 9; echo)                  #  61fAFAb9b
 image_build_ident="$(date +%Y).$(date +%m).$(date +%d)-${image_git_sha1_short}"     #  2025.06.19-bcfc4ffe
-image_builddate=$(date +'%Y%m%d')                                                   #  20250620
+image_builddate=$(date -u +'%Y%m%d')                                                #  20250620
 image_version=$(echo $image_version_date_1digit)                                    #  2025.6.20
 image_version_1digit=$(echo ${image_version} | cut -d '.' -f1-1)                    #  2025
 image_version_2digit=$(echo ${image_version} | cut -d '.' -f1-2)                    #  2025.6
@@ -488,6 +488,32 @@ if [[ $script_dryrun = false ]]; then
         --no-cache \
         --pull \
         .
+
+    echo
+    echo "\
+    docker buildx build \\
+        --build-arg IMAGE_NAME=$image_name \\
+        --build-arg IMAGE_ARCH=$image_arch \\
+        --build-arg IMAGE_BUILDDATE=$image_builddate \\
+        --build-arg IMAGE_VERSION=$image_version \\
+        --build-arg IMAGE_RELEASE=$image_release \\
+        --build-arg IMAGE_REGISTRY=$image_registry \\
+        --tag $image_author/$image_name:latest \\
+        --tag $image_author/$image_name:$image_version \\
+        --tag $image_author/$image_name:$image_version_1digit \\
+        --tag $image_author/$image_name:$image_version_2digit \\
+        --file $image_dockerfile \\
+        --platform linux/$image_arch \\
+        --attest type=provenance,disabled=true \\
+        --attest type=sbom,disabled=true \\
+        --output type=docker \\
+        --allow network.${image_network} \\
+        --network ${image_network} \\
+        --no-cache \\
+        --pull \\
+        ."
+    echo
+
 fi
 
 # #

@@ -258,10 +258,10 @@ jobs:
                   PKG_VER_FULL="$(date -u +%Y.%-m.%-d)"                                             #  2025.6.21 > 2025.6.21
                   echo "PKG_VER_FULL=${PKG_VER_FULL}" >> $GITHUB_ENV
 
-                  PKG_VER_2DIGIT="$(echo ${PKG_VER_FULL} | cut -d '.' -f1-2"               #  2025.6.21 > 2025.6
+                  PKG_VER_2DIGIT="$(echo ${PKG_VER_FULL} | cut -d '.' -f1-2)"                       #  2025.6.21 > 2025.6
                   echo "PKG_VER_2DIGIT=${PKG_VER_2DIGIT}" >> $GITHUB_ENV
 
-                  PKG_VER_1DIGIT="$(echo ${PKG_VER_FULL} | cut -d '.' -f1-1)"              #  2025.6.21 > 2025
+                  PKG_VER_1DIGIT="$(echo ${PKG_VER_FULL} | cut -d '.' -f1-1)"                       #  2025.6.21 > 2025
                   echo "PKG_VER_1DIGIT=${PKG_VER_1DIGIT}" >> $GITHUB_ENV
 
                   #  parse version into segments
@@ -437,7 +437,7 @@ jobs:
                   PKG_VER_FULL="$(date -u +%Y.%-m.%-d)"                                             #  2025.6.21 > 2025.6.21
                   echo "PKG_VER_FULL=${PKG_VER_FULL}" >> $GITHUB_ENV
 
-                  PKG_VER_2DIGIT="$(echo ${PKG_VER_FULL} | cut -d '.' -f1-2"                        #  2025.6.21 > 2025.6
+                  PKG_VER_2DIGIT="$(echo ${PKG_VER_FULL} | cut -d '.' -f1-2)"                       #  2025.6.21 > 2025.6
                   echo "PKG_VER_2DIGIT=${PKG_VER_2DIGIT}" >> $GITHUB_ENV
 
                   PKG_VER_1DIGIT="$(echo ${PKG_VER_FULL} | cut -d '.' -f1-1)"                       #  2025.6.21 > 2025
@@ -1016,7 +1016,7 @@ jobs:
                   PKG_VER_FULL="$(date -u +%Y.%-m.%-d)"                                             #  2025.6.21 > 2025.6.21
                   echo "PKG_VER_FULL=${PKG_VER_FULL}" >> $GITHUB_ENV
 
-                  PKG_VER_2DIGIT="$(echo ${PKG_VER_FULL} | cut -d '.' -f1-2"                        #  2025.6.21 > 2025.6
+                  PKG_VER_2DIGIT="$(echo ${PKG_VER_FULL} | cut -d '.' -f1-2)"                       #  2025.6.21 > 2025.6
                   echo "PKG_VER_2DIGIT=${PKG_VER_2DIGIT}" >> $GITHUB_ENV
 
                   PKG_VER_1DIGIT="$(echo ${PKG_VER_FULL} | cut -d '.' -f1-1)"                       #  2025.6.21 > 2025

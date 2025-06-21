@@ -1,6 +1,6 @@
 {
     "name": "backage",
-    "version": "2025.6.20",
+    "version": "2025.6.21",
     "description": "Endpoint behind badges for GitHub Packages",
     "author": "ipitio",
     "license": "MIT",
@@ -55,13 +55,9 @@
     "dependencies": {
         "cron": "^4.3.1",
         "node-cron": "^4.1.0",
-        "playwright": "^1.52.0",
-        "user-agents": "^1.1.557",
         "chalk": "^5.4.1",
         "ejs": "^3.1.10",
         "moment": "^2.30.1",
-        "express": "^5.1.0",
-        "nconf": "^1.0.0-beta.2",
         "javascript-time-ago": "^2.5.11",
         "os-name": "^6.1.0",
         "getos": "^3.2.1"

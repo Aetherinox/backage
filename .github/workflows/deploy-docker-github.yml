@@ -344,7 +344,7 @@ jobs:
 
             - name: '#️⃣ Manage Permissions'
               run: |
-                  find ./ -name 'run' -o -name "backage.sh" -print -exec chmod 755 {} \;
+                  find ./ \( -name 'run' -o -name 'backage.sh' \) -print -exec chmod 755 {} \;
                   WRONG_PERM=$(find ./  -path "./.git" -prune -o \( -name "backage.sh" -o -name "run" -o -name "finish" -o -name "check" \) -not -perm -u=x,g=x,o=x -print)
                   stat -c %a ./root/etc/s6-overlay/s6-rc.d/init-backage-cron/backage.sh
                   if [ -n "${WRONG_PERM}" ]; then
@@ -551,7 +551,7 @@ jobs:
 
             - name: '#️⃣ Manage Permissions'
               run: |
-                  find ./ -name 'run' -o -name "backage.sh" -print -exec chmod 755 {} \;
+                  find ./ \( -name 'run' -o -name 'backage.sh' \) -print -exec chmod 755 {} \;
                   WRONG_PERM=$(find ./  -path "./.git" -prune -o \( -name "backage" -o -name "run" -o -name "finish" -o -name "check" \) -not -perm -u=x,g=x,o=x -print)
                   if [ -n "${WRONG_PERM}" ]; then
                       echo "⚠️⚠️⚠️ Permissions are invalid ⚠️⚠️⚠️"

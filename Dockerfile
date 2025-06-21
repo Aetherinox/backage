@@ -140,6 +140,16 @@ RUN \
     npm i -g npm@latest
 
 # #
+#   clean up
+# #
+
+RUN \
+    apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /tmp/* /var/tmp* /var/lib/apt/lists/* && \
+    rm -rf /usr/share/man?? /usr/share/man/??_*
+
+# #
 #   Copy docker-entrypoint
 # #
 

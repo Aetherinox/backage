@@ -144,9 +144,12 @@ RUN \
 # #
 
 RUN \
+    apt-get remove python -y && \
     apt-get autoremove -y && \
-    apt-get clean && \
-    rm -rf /tmp/* /var/tmp* /var/lib/apt/lists/* && \
+    apt-get autoclean -y && \
+    apt-get clean -y && \
+    apt-get purge -y && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
     rm -rf /usr/share/man?? /usr/share/man/??_*
 
 # #

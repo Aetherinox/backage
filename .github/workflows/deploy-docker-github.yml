@@ -274,7 +274,7 @@ jobs:
                   echo "‎"
                   echo "‎"
                   sudo apt -qq update
-                  sudo apt -qq install tree
+                  sudo apt -qq install tree dos2unix
                   echo "‎"
                   echo "‎"
                   echo "―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――"

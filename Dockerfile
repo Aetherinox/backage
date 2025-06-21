@@ -144,13 +144,14 @@ RUN \
 # #
 
 RUN \
-    apt-get remove python -y && \
-    apt-get autoremove -y && \
-    apt-get autoclean -y && \
-    apt-get clean -y && \
-    apt-get purge -y && \
-    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
-    rm -rf /usr/share/man?? /usr/share/man/??_*
+    apt autoremove -y && \
+    apt autoclean -y && \
+    apt clean -y && \
+    apt purge -y && \
+    rm -rf /var/lib/apt/lists/* && \
+    rm -rf /tmp/* && \
+    rm -rf /var/tmp/* && \
+    rm -rf /usr/share/man
 
 # #
 #   Copy docker-entrypoint

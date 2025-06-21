@@ -1,0 +1,167 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+# #
+#   defaults
+# #
+
+: "${PUID:=999}"
+: "${PGID:=999}"
+: "${DIR_BUILD:=/usr/src/web}"
+: "${DIR_RUN:=/usr/bin/web}"
+: "${DIR_APP:=/app}"
+
+# #
+#   source logger
+# #
+
+source "/usr/bin/helpers/logger/logger.sh"
+
+# #
+#   define > system
+# #
+
+sys_os_ver="1.0.0"
+sys_os_name="Ubuntu"
+sys_code="unknown"
+sys_arch="amd64"
+
+# #
+#   distro > alpine
+# #
+
+    if [ -e /etc/alpine-release ]; then
+        sys_os_name=Alpine
+        sys_os_ver=$(cat /etc/alpine-release)
+
+        if [[ -z "${sys_os_name// }" ]]; then
+            sys_os_name=$PRETTY_NAME
+        fi
+
+        if [[ -z "${sys_os_ver// }" ]]; then
+            sys_os_name=$VERSION_ID
+        fi
+
+# #
+#   define > distro
+#       freedesktop.org and systemd
+#       returns distro information.
+# #
+
+    elif [ -f /etc/os-release ]; then
+        . /etc/os-release
+        sys_os_name=$NAME
+        sys_os_ver=$VERSION
+        sys_code=$VERSION_CODENAME
+
+        if [[ -z "${sys_os_name// }" ]]; then
+            sys_os_name=$PRETTY_NAME
+        fi
+
+        if [[ -z "${sys_os_ver// }" ]]; then
+            sys_os_name=$VERSION_ID
+        fi
+
+# #
+#   distro > linuxbase.org
+# #
+
+    elif type lsb_release >/dev/null 2>&1; then
+        sys_os_name=$(lsb_release -si)
+        sys_os_ver=$(lsb_release -sr)
+
+# #
+#   distro > versions of Debian/Ubuntu without lsb_release cmd
+# #
+
+    elif [ -f /etc/lsb-release ]; then
+        . /etc/lsb-release
+        sys_os_name=$DISTRIB_ID
+        sys_os_ver=$DISTRIB_RELEASE
+
+# #
+#   distro > older Debian/Ubuntu/etc distros
+# #
+
+    elif [ -f /etc/debian_version ]; then
+        sys_os_name=Debian
+        sys_os_ver=$(cat /etc/debian_version)
+
+# #
+#   distro > fallback: uname, e.g. "Linux <version>", also works for BSD
+# #
+
+    else
+        sys_os_name=$(uname -s)
+        sys_os_ver=$(uname -r)
+    fi
+
+# #
+#   architecture
+# #
+
+if command -v dpkg>/dev/null 2>&1; then
+    sys_arch=$(dpkg --print-architecture)
+elif command -v uname >/dev/null 2>&1; then
+    sys_arch=$(uname -m)
+fi
+
+# #
+#   get container ips
+# #
+
+if ! command -v ip >/dev/null 2>&1; then
+    IP_GATEWAY="127.0.0.1"
+else
+    IP_GATEWAY=$(/sbin/ip route|awk '/default/ { print $3 }')
+fi
+
+if ! command -v ifconfig >/dev/null 2>&1; then
+    IP_CONTAINER="127.0.0.1"
+else
+    IP_CONTAINER=$(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1')
+fi
+
+# #
+#   s6 > branding
+# #
+
+echo -e
+printf '%-1s\n' " ${c_gray}──────────────────────────────────────────────────────────────────────────────────────────────────────── ${c_end}"
+printf '%-1s\n' " ${c_gray}                                ${c_green_l}Backage Github Badge End-point${c_end}"
+printf '%-1s\n' " ${c_gray}──────────────────────────────────────────────────────────────────────────────────────────────────────── ${c_end}"
+echo -e
+printf '%-2s\n' " ${c_gray}  Backage is a self-hostable endpoint behind badges for GitHub Packages. ${c_end}"
+printf '%-2s\n' " ${c_gray}  If you wish to utilize the official repository; the only thing you need to do is star the ${c_end}"
+printf '%-2s\n' " ${c_gray}  Github repo at https://github.com/ipitio/backage. ${c_end}"
+echo -e
+printf '%-2s\n' " ${c_gray}  The service's circular priority queue will update the closed-loop system with them within ${c_end}"
+printf '%-2s\n' " ${c_gray}  the next few hours. Additionally watching and forking the repo, and following the owner, are ways ${c_end}"
+printf '%-2s\n' " ${c_gray}  to increase their priority. Yes, I know, but these are the graphs GitHub has available. ${c_end}"
+echo -e
+printf '%-2s\n' " ${c_gray}  You can utilize the end-point one of two ways: ${c_end}"
+echo -e
+printf '%-6s %-30s %-65s\n' "" " ${c_green_l}1. ${c_end}" "${c_end}The official Github Page at https://github.com/ipitio/backage ${c_end}"
+printf '%-6s %-30s %-65s\n' "" " ${c_green_l}2. ${c_end}" "${c_end}Fork the repository and run the workflows or docker container ${c_end}"
+printf '%-6s %-30s %-65s\n' "" " ${c_green_l}   ${c_end}" "${c_end}from your own Github account ${c_end}"
+echo -e
+
+printf '%-6s %-30s %-65s\n' "" " ${c_green_l}Github Repo ${c_end}" "${c_end}https://github.com/ipitio/backage ${c_end}"
+printf '%-6s %-30s %-65s\n' "" " ${c_green_l}Endpoint URL ${c_end}" "${c_end}https://ipitio.github.io/backage/OWNER/[REPO/[PACKAGE]].FORMAT ${c_end}"
+
+# #
+#   branding > system / container
+# #
+
+echo -e
+if [[ -z ${AETHERX_NON_ROOT_USER} ]]; then
+    printf '%-6s %-30s %-65s\n' "" " ${c_green_l}Distro${c_end}" "${c_end}${sys_os_name} ${sys_os_ver} ${c_end}"
+    printf '%-6s %-30s %-65s\n' "" " ${c_green_l}User:Group${c_end}" "${c_end}$(id -u dockerx):$(id -g dockerx) ${c_end}"
+else
+    printf '%-6s %-30s %-65s\n' "" " ${c_green_l}User:Group${c_end}" "${c_end}$(stat /run -c %u):$(stat /run -c %g) ${c_end}"
+fi
+printf '%-6s %-30s %-65s\n' "" " ${c_green_l}Gateway IP${c_end}" "${c_end}$(echo $IP_GATEWAY) ${c_end}"
+printf '%-6s %-30s %-65s\n' "" " ${c_green_l}Container IP${c_end}" "${c_end}$(echo $IP_CONTAINER) ${c_end}"
+echo -e
+printf '%-1s\n' " ${c_gray}──────────────────────────────────────────────────────────────────────────────────────────────────────── ${c_end}"
+echo -e

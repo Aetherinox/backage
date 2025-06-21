@@ -1,0 +1,96 @@
+{
+    "name": "backage",
+    "version": "2025.6.20",
+    "description": "Endpoint behind badges for GitHub Packages",
+    "author": "ipitio",
+    "license": "MIT",
+    "main": "index.js",
+    "type": "module",
+    "build": {
+        "appId": "com.backage.id"
+    },
+    "bugs": {
+        "url": "https://github.com/ipitio/backage/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ipitio/backage.git"
+    },
+    "docs": {
+        "url": "https://github.com/ipitio/backage/wiki"
+    },
+    "contributors": [
+        {
+            "name": "ipitio",
+            "email": "118329232+ipitio@users.noreply.github.com",
+            "url": "https://github.com/ipitio"
+        },
+        {
+            "name": "Aetherinox",
+            "email": "118329232+aetherinox@users.noreply.github.com",
+            "url": "https://github.com/aetherinox"
+        }
+    ],
+      "scripts": {
+          "start": "node index.js",
+          "start:debug": "noxenv LOG_LEVEL=6 node index.js",
+          "docker:buildx:amd64": "docker buildx create --driver docker-container --name container --bootstrap --use && docker buildx build --build-arg IMAGE_DISTRO=noble IMAGE_ARCH=amd64 --build-arg IMAGE_VERSION=$npm_config_version --build-arg IMAGE_BUILDDATE=$npm_config_builddate --tag backage:$npm_config_version-amd64 --attest type=provenance,disabled=true --attest type=sbom,disabled=true --file Dockerfile --platform linux/amd64 --output type=docker --allow network.host --network host --no-cache --pull .",
+          "docker:buildx:arm64": "docker buildx create --driver docker-container --name container --bootstrap --use && docker buildx build --build-arg IMAGE_DISTRO=noble IMAGE_ARCH=arm64 --build-arg IMAGE_VERSION=$npm_config_version --build-arg IMAGE_BUILDDATE=$npm_config_builddate --tag backage:$npm_config_version-arm64 --attest type=provenance,disabled=true --attest type=sbom,disabled=true --file Dockerfile --platform linux/arm64 --output type=docker --allow network.host --network host --no-cache --pull .",
+          "contrib:add": "all-contributors add",
+          "contrib:generate": "all-contributors generate",
+          "root": "node root.js",
+          "root:generate": "node root.js generate",
+          "env:root": "npx --quiet env-cmd --no-override node root.js",
+          "env:uuid": "npx --quiet env-cmd --no-override node root.js uuid",
+          "env:guid": "npx --quiet env-cmd --no-override node root.js guid",
+          "env:version": "node -p require('./package.json').version;",
+          "lint": "npx eslint"
+    },
+    "keywords": [
+        "github",
+        "badges",
+        "endpoint",
+        "ipitio"
+    ],
+    "dependencies": {
+        "cron": "^4.3.1",
+        "node-cron": "^4.1.0",
+        "playwright": "^1.52.0",
+        "user-agents": "^1.1.557",
+        "chalk": "^5.4.1",
+        "ejs": "^3.1.10",
+        "moment": "^2.30.1",
+        "express": "^5.1.0",
+        "nconf": "^1.0.0-beta.2",
+        "javascript-time-ago": "^2.5.11",
+        "os-name": "^6.1.0",
+        "getos": "^3.2.1"
+    },
+    "devDependencies": {
+        "@aetherinox/noxenv": "^1.1.1",
+        "@types/uuid": "^10.0.0",
+        "all-contributors-cli": "^6.26.1",
+        "uuid": "^11.1.0",
+        "env-cmd": "^10.1.0",
+        "eslint": "^9.28.0",
+        "eslint-plugin-chai-friendly": "^1.1.0",
+        "eslint-plugin-import": "^2.31.0",
+        "eslint-plugin-n": "^17.19.0",
+        "eslint-plugin-promise": "^7.2.1",
+        "@stylistic/eslint-plugin": "^4.4.1"
+    },
+    "engines": {
+        "node": ">=20"
+    },
+    "files": [
+        "LICENSE",
+        "README.md",
+        "root.js",
+        "index.js",
+        "manifest.json",
+        "www/index.html",
+        "www/favicon.ico",
+        "www/css/backage.min.css",
+        "www/js/backage.min.js"
+  ]
+}

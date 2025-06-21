@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# #
+#   source logger
+# #
+
+source "/usr/bin/helpers/logger/logger.sh"
+
+# #
+#   define > general
+# #
+
+PLUGINS_PATH="/config/www/plugins"
+
+# #
+#   Plugins > Start
+# #
+
+log_info "init" \
+    "${c_yellow_l}[s6-initd]${c_end}" \
+    "${c_blue_l}ℹ️${c_end}" \
+    "${c_blue_l}<msg>" "${c_gray}Checking for available plugins${c_end}" \
+    "${c_blue_l}<path>" "${c_gray}${PLUGINS_PATH}${c_end}"

@@ -1,0 +1,63 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+# #
+#   @project        Backage
+#   @usage          Endpoint behind badges for GitHub Packages
+#   @repo           https://github.com/ipitio/backage
+#                   https://github.com/aetherinox/backage
+# #
+
+# #
+#   source logger
+# #
+
+source "/usr/bin/helpers/logger/logger.sh"
+
+# #
+#   Directories
+# #
+
+SCRIPTS_DIR="/custom-cont-init.d"
+
+# #
+#   run script
+# #
+
+# Make sure custom init directory exists and has files in it
+if [[ -e "${SCRIPTS_DIR}" ]] && [[ -n "$(/bin/ls -A ${SCRIPTS_DIR} 2>/dev/null)" ]]; then
+
+    log_info "init" \
+        "${c_yellow_l}[s6-custm]${c_end}" \
+        "${c_blue_l}ℹ️${c_end}" \
+        "${c_blue_l}<msg>" "${c_gray}Checking for available plugins${c_end}" \
+        "${c_blue_l}<path>" "${c_gray}${SCRIPTS_DIR}${c_end}"
+
+    for SCRIPT in "${SCRIPTS_DIR}"/*; do
+        NAME="$(basename "${SCRIPT}")"
+        if [[ -f "${SCRIPT}" ]]; then
+            /bin/bash "${SCRIPT}"
+            log_ok "init" \
+                "${c_yellow_l}[s6-custm]${c_end}" \
+                "${c_green_l}ℹ️${c_end}" \
+                "${c_green_l}<msg>" "${c_gray}Loaded plugin${c_end}" \
+                "${c_green_l}<name>" "${c_gray}${NAME}${c_end}" \
+                "${c_green_l}<file>" "${c_gray}${SCRIPT}${c_end}" \
+                "${c_green_l}<folder>" "${c_gray}${SCRIPTS_DIR}${c_end}" \
+                "${c_green_l}<code>" "${c_gray}$?${c_end}"
+        elif [[ ! -f "${SCRIPT}" ]]; then
+            log_warn "init" \
+                "${c_yellow_l}[s6-custm]${c_end}" \
+                "${c_yellow_l}⚠️${c_end}" \
+                "${c_yellow_l}<msg>" "${c_gray} Scanned plugin file ${c_yellow_l}${NAME^}${c_gray} is not a plugin${c_end}" \
+                "${c_yellow_l}<name>" "${c_gray}${NAME}${c_end}" \
+                "${c_yellow_l}<file>" "${c_gray}${SCRIPT}${c_end}" \
+                "${c_yellow_l}<folder>" "${c_gray}${SCRIPTS_DIR}${c_end}"
+        fi
+    done
+else
+    log_info "init" \
+        "${c_yellow_l}[s6-custm]${c_end}" \
+        "${c_blue_l}ℹ️${c_end}" \
+        "${c_blue_l}<msg>" "${c_gray}No plugins found${c_end}"
+fi

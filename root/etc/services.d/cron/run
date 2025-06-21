@@ -1,0 +1,505 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+# #
+#   @usage              bash /etc/s6-overlay/s6-rc.d/init-backage-cron/backage.sh
+# #
+
+# #
+#   source logger
+# #
+
+source "/usr/bin/helpers/logger/logger.sh"
+
+# #
+#   defaults
+# #
+
+: "${PUID:=999}"
+: "${PGID:=999}"
+: "${DIR_BUILD:=/usr/src/web}"
+: "${DIR_RUN:=/usr/bin/web}"
+: "${DIR_APP:=/app}"
+bHasError="false"
+
+# #
+#   distro info
+# #
+
+sys_os_name="Unknown"
+sys_os_ver="1.0.0"
+
+if [ -e /etc/alpine-release ]; then
+    sys_os_name="Alpine"
+    sys_os_ver="$(< /etc/alpine-release)"
+fi
+
+# #
+#   start script
+# #
+
+log_info "core" \
+    "${c_yellow_l}[svcsdotd]${c_end}" \
+    "${c_blue_l}ℹ️${c_end}" \
+    "${c_blue_l}<msg>" "${c_gray}Starting up s6 overlay${c_end}"
+
+# #
+#   get container ips
+# #
+
+ip_gateway=$(/sbin/ip route|awk '/default/ { print $3 }')
+ip_container=$(ifconfig | grep -Eo 'inet (addr:)?([0-9]*\.){3}[0-9]*' | grep -Eo '([0-9]*\.){3}[0-9]*' | grep -v '127.0.0.1')
+
+if [ -d "/var/run/s6/container_environment/" ]; then
+    printf "$ip_gateway" > /var/run/s6/container_environment/IP_GATEWAY
+    printf "$ip_container" > /var/run/s6/container_environment/IP_CONTAINER
+else
+    printf '%-29s %-65s\n' "  ${c[redl]}Backage${c_end}" "${c_end}${c[redl]}Error:${c_end} Cannot generate s6-overlay env files; directory ${c[redl]}/var/run/s6/container_environment/${c_end} does not exist${c_end}"
+    bHasError="true"
+fi
+
+# #
+#   s6 > export env vars
+# #
+
+export IP_GATEWAY=$ip_gateway
+export IP_GATEWAY=$ip_container
+
+log_info "core" \
+    "${c_yellow_l}[svcsdotd]${c_end}" \
+    "${c_blue_l}ℹ️${c_end}" \
+    "${c_blue_l}<msg>" "${c_gray}Assigning container ip addresses${c_end}" \
+    "${c_blue_l}<ipGateway>" "${c_gray}${ip_gateway}${c_end}" \
+    "${c_blue_l}<ipContainer>" "${c_gray}${ip_container}${c_end}"
+
+# #
+#   if GITHUB_ACTOR not specified; use GITHUB_OWNER
+# #
+
+if [ -z "${GITHUB_ACTOR}" ]; then
+    GITHUB_ACTOR="${GITHUB_OWNER:-ipitio}"
+    export "$GITHUB_ACTOR"
+fi
+
+# #
+#   Get Git Info
+# #
+
+if [ -z "${GITHUB_OWNER}" ] || [ "${GITHUB_OWNER}" == "unknown" ] ||
+   [ -z "${GITHUB_EMAIL}" ] || [ "${GITHUB_EMAIL}" == "unknown" ] ||
+   [ -z "${GITHUB_TOKEN}" ] || [ "${GITHUB_TOKEN}" == "unknown" ]
+then
+    log_error "core" \
+        "${c_yellow_l}[svcsdotd]${c_end}" \
+        "${c_red_l}❌${c_end}" \
+        "${c_red_l}<msg>" "${c_gray}Must specify Git env vars; ${c_red_l}\${GITHUB_OWNER}${c_gray}, ${c_red_l}\${GITHUB_EMAIL}${c_gray}, ${c_red_l}\${GITHUB_TOKEN}${c_gray} missing or invalid${c_end}"
+
+    bHasError="true"
+fi
+
+# #
+#   Git Signing Key
+# #
+
+if [ -z "${GITHUB_SIGNINGKEY}" ] || [ "${GITHUB_SIGNINGKEY}" == "unknown" ]; then
+    log_warn "core" \
+        "${c_yellow_l}[svcsdotd]${c_end}" \
+        "${c_yellow_l}⚠️${c_end}" \
+        "${c_yellow_l}<msg>" "${c_yellow}Optional:${c_gray} No gpg signing key specified, no commits will be signed; set ${c_yellow_l}\${GITHUB_SIGNINGKEY}${c_gray} to set one${c_end}"
+fi
+
+# #
+#   Confirm DIR_BUILD env variable exists
+# #
+
+if [ "$bHasError" = "false" ]; then
+    if [ -z "${DIR_BUILD}" ]; then
+        log_error "core" \
+            "${c_yellow_l}[svcsdotd]${c_end}" \
+            "${c_red_l}❌${c_end}" \
+            "${c_red_l}<msg>" "${c_gray}Cannot continue; env var ${c_red_l}\${DIR_BUILD}${c_gray} missing or invalid${c_end}"
+
+        bHasError="true"
+    else
+        if [ -d "${DIR_BUILD}" ]; then
+            log_info "core" \
+                "${c_yellow_l}[svcsdotd]${c_end}" \
+                "${c_blue_l}ℹ️${c_end}" \
+                "${c_blue_l}<msg>" "${c_gray}Build directory already exists${c_end}" \
+                "${c_blue_l}<directory>" "${c_gray}${DIR_BUILD}${c_end}"
+        else
+            log_debug "core" \
+                "${c_yellow_l}[svcsdotd]${c_end}" \
+                "${c_gray_l}⚙️${c_end}" \
+                "${c_gray_l}<msg>" "${c_gray}Creating build directory${c_end}" \
+                "${c_gray_l}<directory>" "${c_gray}${DIR_BUILD}${c_end}"
+
+            mkdir -p "${DIR_BUILD}"
+
+            if [ -d "${DIR_BUILD}" ]; then
+                log_ok "core" \
+                    "${c_yellow_l}[svcsdotd]${c_end}" \
+                    "${c_green_l}✅${c_end}" \
+                    "${c_green_l}<msg>" "${c_gray}Created build directory${c_end}" \
+                    "${c_green_l}<directory>" "${c_gray}${DIR_BUILD}${c_end}"
+            else
+                log_error "core" \
+                    "${c_yellow_l}[svcsdotd]${c_end}" \
+                    "${c_red_l}❌${c_end}" \
+                    "${c_red_l}<msg>" "${c_gray}Failed to create build directory ${c_red_l}${DIR_BUILD}${c_gray}; aborting setup${c_end}"
+
+                bHasError="true"
+            fi
+        fi
+    fi
+fi
+
+# #
+#   Confirm DIR_RUN env variable exists
+# #
+
+if [ "$bHasError" = "false" ]; then
+    if [ -z "${DIR_RUN}" ]; then
+        log_error "core" \
+            "${c_yellow_l}[svcsdotd]${c_end}" \
+            "${c_red_l}❌${c_end}" \
+            "${c_red_l}<msg>" "${c_gray}Cannot continue; env var ${c_red_l}\${DIR_RUN}${c_gray} missing${c_end}"
+
+        bHasError="true"
+    elif [ -d "${DIR_RUN}" ]; then
+        log_info "core" \
+            "${c_yellow_l}[svcsdotd]${c_end}" \
+            "${c_blue_l}ℹ️${c_end}" \
+            "${c_blue_l}<msg>" "${c_gray}Run directory already exists${c_end}" \
+            "${c_blue_l}<directory>" "${c_gray}${DIR_RUN}${c_end}"
+    else
+        log_debug "core" \
+            "${c_yellow_l}[svcsdotd]${c_end}" \
+            "${c_gray_l}⚙️${c_end}" \
+            "${c_gray_l}<msg>" "${c_gray}Creating run directory${c_end}" \
+            "${c_gray_l}<directory>" "${c_gray}${DIR_RUN}${c_end}"
+
+        mkdir -p "${DIR_RUN}"
+
+        if [ -d "${DIR_RUN}" ]; then
+            log_ok "core" \
+                "${c_yellow_l}[svcsdotd]${c_end}" \
+                "${c_green_l}✅${c_end}" \
+                "${c_green_l}<msg>" "${c_gray}Created run directory${c_end}" \
+                "${c_green_l}<directory>" "${c_gray}${DIR_RUN}${c_end}"
+        else
+            log_error "core" \
+                "${c_yellow_l}[svcsdotd]${c_end}" \
+                "${c_red_l}❌${c_end}" \
+                "${c_red_l}<msg>" "${c_gray}Failed to create run directory ${c_red_l}${DIR_RUN}/${c_gray}; aborting setup${c_end}" \
+                "${c_red_l}<directory>" "${c_gray}${DIR_RUN}${c_end}"
+
+            bHasError="true"
+        fi
+    fi
+fi
+
+# #
+#   Ensure app directory is defined and created
+# #
+
+if [ "$bHasError" = "false" ]; then
+    if [ -z "$DIR_APP" ]; then
+        log_error "core" \
+            "${c_yellow_l}[svcsdotd]${c_end}" \
+            "${c_red_l}❌${c_end}" \
+            "${c_red_l}<msg>" "${c_gray}Cannot continue; env var ${c_red_l}\${DIR_APP}${c_gray} missing${c_end}"
+
+        bHasError="true"
+    else
+        if [ -d "$DIR_APP" ]; then
+            log_info "core" \
+                "${c_yellow_l}[svcsdotd]${c_end}" \
+                "${c_blue_l}ℹ️${c_end}" \
+                "${c_blue_l}<msg>" "${c_gray}App directory already exists${c_end}" \
+                "${c_blue_l}<directory>" "${c_gray}${DIR_APP}${c_end}"
+        else
+            log_debug "core" \
+                "${c_yellow_l}[svcsdotd]${c_end}" \
+                "${c_gray_l}⚙️${c_end}" \
+                "${c_gray_l}<msg>" "${c_gray}Creating app directory${c_end}" \
+                "${c_gray_l}<directory>" "${c_gray}${DIR_APP}${c_end}"
+
+            mkdir -p "$DIR_APP"
+
+            if [ -d "$DIR_APP" ]; then
+                log_ok "core" \
+                    "${c_yellow_l}[svcsdotd]${c_end}" \
+                    "${c_green_l}✅${c_end}" \
+                    "${c_green_l}<msg>" "${c_gray}Created app directory${c_end}" \
+                    "${c_green_l}<directory>" "${c_gray}${DIR_APP}${c_end}"
+            else
+                log_error "core" \
+                    "${c_yellow_l}[svcsdotd]${c_end}" \
+                    "${c_red_l}❌${c_end}" \
+                    "${c_red_l}<msg>" "${c_gray}Failed to create app directory ${c_red_l}${DIR_APP}/${c_gray}; aborting setup${c_end}" \
+                    "${c_red_l}<directory>" "${c_gray}${DIR_APP}${c_end}"
+
+                bHasError="true"
+            fi
+        fi
+    fi
+fi
+
+# #
+#   Start process now that we have both env DIR_BUILD and DIR_RUN
+# #
+
+if [ "$bHasError" = "false" ]; then
+    if [ -d "${DIR_BUILD}/" ] && [ -d "${DIR_RUN}/" ]; then
+        log_info "core" \
+            "${c_yellow_l}[svcsdotd]${c_end}" \
+            "${c_blue_l}ℹ️${c_end}" \
+            "${c_blue_l}<msg>" "${c_gray}Copying build files${c_end}" \
+            "${c_blue_l}<from>" "${c_gray}${DIR_BUILD}${c_end}" \
+            "${c_blue_l}<to>" "${c_gray}${DIR_RUN}${c_end}"
+
+        cp -r ${DIR_BUILD}/* ${DIR_RUN}
+    else
+        #  build folder does not exist
+        if [ ! -d "${DIR_BUILD}/" ]; then
+            log_error "core" \
+                "${c_yellow_l}[svcsdotd]${c_end}" \
+                "${c_red_l}❌${c_end}" \
+                "${c_red_l}<msg>" "${c_gray}Cannot copy build files from ${c_red_l}${DIR_BUILD}${c_gray} to ${c_red_l}${DIR_RUN}${c_gray}; build directory ${c_red_l}${DIR_BUILD}${c_gray} does not exist${c_end}" \
+                "${c_red_l}<from>" "${c_gray}${DIR_BUILD}${c_end}" \
+                "${c_red_l}<to>" "${c_gray}${DIR_RUN}${c_end}"
+
+        #  run folder does not exist
+        elif [ ! -d "${DIR_RUN}/" ]; then
+            log_error "core" \
+                "${c_yellow_l}[svcsdotd]${c_end}" \
+                "${c_red_l}❌${c_end}" \
+                "${c_red_l}<msg>" "${c_gray}Cannot copy build files from ${c_red_l}${DIR_BUILD}${c_gray} to ${c_red_l}${DIR_RUN}${c_gray}; run directory ${c_red_l}${DIR_RUN}${c_gray} does not exist${c_end}" \
+                "${c_red_l}<from>" "${c_gray}${DIR_BUILD}${c_end}" \
+                "${c_red_l}<to>" "${c_gray}${DIR_RUN}${c_end}"
+        #  unexpected error
+        else
+            log_error "core" \
+                "${c_yellow_l}[svcsdotd]${c_end}" \
+                "${c_red_l}❌${c_end}" \
+                "${c_red_l}<msg>" "${c_gray}Unexpected error while trying to copy build files from ${c_red_l}${DIR_BUILD}${c_gray} to ${c_red_l}${DIR_RUN}${c_gray}; aborting${c_end}" \
+                "${c_red_l}<from>" "${c_gray}${DIR_BUILD}${c_end}" \
+                "${c_red_l}<to>" "${c_gray}${DIR_RUN}${c_end}"
+        fi
+
+        bHasError="true"
+    fi
+fi
+
+# #
+#   clean up build directory
+# #
+
+if [ "$bHasError" = "false" ]; then
+    log_info "core" \
+        "${c_yellow_l}[svcsdotd]${c_end}" \
+        "${c_blue_l}ℹ️${c_end}" \
+        "${c_blue_l}<msg>" "${c_gray}Removing build directory${c_end}" \
+        "${c_blue_l}<directory>" "${c_gray}${DIR_BUILD}${c_end}"
+
+    rm -rf "${DIR_BUILD}/"
+fi
+
+# #
+#   git clone (optional branch)
+# #
+
+if [ "$bHasError" = "false" ]; then
+    if [ -d "${DIR_APP}" ]; then
+        cd "${DIR_APP}"
+
+        log_debug "core" \
+            "${c_yellow_l}[svcsdotd]${c_end}" \
+            "${c_gray_l}⚙️${c_end}" \
+            "${c_gray_l}<msg>" "${c_gray}Directory assigned to ${c_green_l}\${DIR_APP}${c_gray} exists${c_end}" \
+            "${c_gray_l}<directory>" "${c_gray}${DIR_APP}${c_end}"
+
+        if [ -n ${GITHUB_REPO} ] && [ -n ${GITHUB_OWNER} ]; then
+            log_info "core" \
+                "${c_yellow_l}[svcsdotd]${c_end}" \
+                "${c_blue_l}ℹ️${c_end}" \
+                "${c_blue_l}<msg>" "${c_gray}Valid env variables for repo name and user specified${c_end}" \
+                "${c_blue_l}<env:GITHUB_OWNER>" "${c_gray}${GITHUB_OWNER}${c_end}" \
+                "${c_blue_l}<env:GITHUB_REPO>" "${c_gray}${GITHUB_REPO}${c_end}"
+
+            log_info "core" \
+                "${c_yellow_l}[svcsdotd]${c_end}" \
+                "${c_blue_l}ℹ️${c_end}" \
+                "${c_blue_l}<msg>" "${c_gray}Cloning git project${c_end}" \
+                "${c_blue_l}<url>" "${c_gray}${GITHUB_PROTO}://${GITHUB_HOST}/${GITHUB_OWNER}/${GITHUB_REPO}${c_end}" \
+                "${c_blue_l}<branch>" "${c_gray}${GITHUB_BRANCH}${c_end}" \
+                "${c_blue_l}<to>" "${c_gray}${DIR_APP}${c_end}"
+
+            git clone "${GITHUB_PROTO}://${GITHUB_HOST}/${GITHUB_OWNER}/${GITHUB_REPO}" -b "${GITHUB_BRANCH}" "${DIR_APP}" -q
+        else
+            log_error "core" \
+                "${c_yellow_l}[svcsdotd]${c_end}" \
+                "${c_red_l}❌${c_end}" \
+                "${c_red_l}<msg>" "${c_gray}Cannot clone repo; did not specify env vars ${c_red_l}${GITHUB_OWNER}${c_gray} and ${c_red_l}${GITHUB_REPO}${c_gray}; aborting${c_end}"
+
+            bHasError="true"
+        fi
+    else
+        log_error "core" \
+            "${c_yellow_l}[svcsdotd]${c_end}" \
+            "${c_red_l}❌${c_end}" \
+            "${c_red_l}<msg>" "${c_gray}Cannot cd; run directory ${c_red_l}${DIR_APP}${c_gray} does not exist. Define with ${c_red_l}\${DIR_APP}${c_gray}; aborting${c_end}" \
+            "${c_red_l}<directory>" "${c_gray}${DIR_APP}${c_end}" \
+
+        bHasError="true"
+    fi
+fi
+
+# #
+#   gitignore
+# #
+
+if [ "$bHasError" = "false" ]; then
+    cd "${DIR_APP}"
+
+    # #
+    #   add safe; otherwise the error will return:
+    #       fatal: not in a git directory
+    # #
+
+    git config --global safe.directory "${DIR_APP}"
+    git config --global core.excludesfile "/usr/bin/helpers/.gitignore"
+
+    # #
+    #   configure git settings if no error has occurred
+    # #
+
+    # use here-doc to avoid embedded newlines or leading spaces
+    while IFS=',' read property value; do
+        # trim whitespace (to be POSIX-compliant)
+        property=$(echo "$property" | sed 's/^ *//; s/ *$//')
+        value=$(echo "$value" | sed 's/^ *//; s/ *$//')
+
+        log_debug "core" \
+            "${c_yellow_l}[svcsdotd]${c_end}" \
+            "${c_gray_l}⚙️${c_end}" \
+            "${c_gray_l}<msg>" "${c_gray}Setting git config item${c_end}" \
+            "${c_gray_l}<command>" "${c_gray}git config ${property} ${value}${c_end}"
+
+        git config "$property" "$value"
+    done <<EOF
+user.name, ${GITHUB_OWNER}
+user.email, ${GITHUB_EMAIL}
+user.signingkey, ${GITHUB_SIGNINGKEY}
+gpg.program, /${USER0}/bin/gpg.sh
+commit.gpgsign, ${GITHUB_GPGSIGN}
+credential.helper, store
+http.postBuffer, 524288000
+http.lowSpeedLimit, 0
+pack.windowMemory, 32m
+pack.packSizeLimit, 32m
+pack.SizeLimit, 32m
+pack.deltaCacheSize, 32m
+init.defaultBranch, ${GITHUB_BRANCH}
+core.excludesfile, /usr/bin/helpers/.gitignore
+core.logallrefupdates, true
+core.quotePath, false
+core.commitGraph, true
+core.eof, lf
+color.diff, true
+color.grep, true
+color.status, true
+color.ui, true
+color.branch, true
+color.interactive, true
+log.decorate, full
+uploadpack.allowfilter, true
+uploadpack.allowAnySHA1InWant, true
+EOF
+
+    # #
+    #   Set remote URL with GitHub personal access token
+    # #
+
+    log_ok "core" \
+        "${c_yellow_l}[svcsdotd]${c_end}" \
+        "${c_green_l}✅${c_end}" \
+        "${c_green_l}<msg>" "${c_gray}Editing git remote url for repo${c_end}" \
+        "${c_green_l}<repo>" "${c_gray}${GITHUB_OWNER}/${GITHUB_REPO}${c_end}"
+
+    git remote set-url origin "${GITHUB_PROTO}://${GITHUB_OWNER}:${GITHUB_TOKEN}@${GITHUB_HOST}/${GITHUB_OWNER}/${GITHUB_REPO}"
+fi
+
+# #
+#   Run setup script if no error has occurred
+# #
+
+if [ "$bHasError" = "false" ]; then
+    log_info "core" \
+        "${c_yellow_l}[svcsdotd]${c_end}" \
+        "${c_blue_l}ℹ️${c_end}" \
+        "${c_blue_l}<msg>" "${c_gray}Running command${c_end}" \
+        "${c_blue_l}<command>" "${c_gray}cd ${DIR_APP}/src && bash bkg.sh${c_end}"
+
+    cd "${DIR_APP}/src" && bash bkg.sh
+fi
+
+# #
+#   Install and start Backage if no error has occurred and npm is available
+# #
+
+if [ "$bHasError" = "false" ]; then
+    if ! command -v npm >/dev/null 2>&1; then
+        log_error "core" \
+            "${c_yellow_l}[svcsdotd]${c_end}" \
+            "${c_red_l}❌${c_end}" \
+            "${c_red_l}<msg>" "${c_gray}Cannot install Backage; package ${c_red_l}npm${c_gray} not installed${c_end}" \
+            "${c_red_l}<package>" "${c_gray}npm${c_end}"
+
+        bHasError="true"
+    else
+        if ! cd "$DIR_RUN"; then
+
+            log_error "core" \
+                "${c_yellow_l}[svcsdotd]${c_end}" \
+                "${c_red_l}❌${c_end}" \
+                "${c_red_l}<msg>" "${c_gray}Failed to change to directory${c_end}" \
+                "${c_red_l}<folder>" "${c_gray}${DIR_RUN}${c_end}"
+
+            bHasError="true"
+        fi
+
+        log_ok "core" \
+            "${c_yellow_l}[svcsdotd]${c_end}" \
+            "${c_green_l}✅${c_end}" \
+            "${c_green_l}<msg>" "${c_gray}Running command${c_end}" \
+            "${c_green_l}<command>" "${c_gray}npm install --omit=dev${c_end}"
+
+        npm install --omit=dev >/dev/null 2>&1
+
+        log_info "core" \
+            "${c_yellow_l}[svcsdotd]${c_end}" \
+            "${c_blue_l}ℹ️${c_end}" \
+            "${c_blue_l}<msg>" "${c_gray}Starting backage${c_end}" \
+            "${c_blue_l}<command>" "${c_gray}npm start${c_end}"
+
+        npm start
+    fi
+fi
+
+# #
+#   finished run script
+# #
+
+if [ "$bHasError" = "false" ]; then
+    printf '%-29s %-65s\n' "  ${c[bluel]}Setup${c_end}" "${c_end}${c[greenl]}Successfully finished initializing script${c_end}"
+else
+    printf '%-29s %-65s\n' "" ""
+    printf '%-29s %-65s\n' "  ${c[redl]}ERROR${c_end}" "${c_end}Fatal errors were detected${c_end}"
+    printf '%-29s %-65s\n' "  ${c[redl]}${c_end}" "${c_end}The run script detected that certain steps failed. This app will not${c_end}"
+    printf '%-29s %-65s\n' "  ${c[redl]}${c_end}" "${c_end}work properly. Address any errors in console, and restart the container.${c_end}"
+    printf '%-29s %-65s\n' "" ""
+    printf '%-29s %-65s\n' "  ${c[redl]}${c_end}" "${c_end}Ensure you have provided the correct environment variables in your${c_end}"
+    printf '%-29s %-65s\n' "  ${c[redl]}${c_end}" "${c_end}${c[bluel]}docker run${c_end} command, or ${c[bluel]}docker-compose.yml.${c_end}"
+fi

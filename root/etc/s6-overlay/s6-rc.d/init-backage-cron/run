@@ -1,0 +1,40 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+# #
+#   defaults
+# #
+
+: "${PUID:=999}"
+: "${PGID:=999}"
+
+# #
+#   source logger
+# #
+
+source "/usr/bin/helpers/logger/logger.sh"
+
+# #
+#  cron > start
+# #
+
+log_info "init" \
+    "${c_yellow_l}[s6-crons]${c_end}" \
+    "${c_blue_l}ℹ️${c_end}" \
+    "${c_blue_l}<msg>" "${c_gray}Setting up cron${c_end}" \
+    "${c_blue_l}<value>" "${c_gray}${TASK_CRON_SYNC}${c_end}"
+
+# #
+#  cron > setup
+# #
+
+echo "${TASK_CRON_SYNC} /etc/s6-overlay/s6-rc.d/init-backage-cron/backage.sh > /proc/1/fd/1 2>/proc/1/fd/2" >>/etc/cron.d/backage
+chmod 0644 /etc/cron.d/backage
+crontab /etc/cron.d/backage
+
+log_ok "init" \
+    "${c_yellow_l}[s6-crons]${c_end}" \
+    "${c_green_l}ℹ️${c_end}" \
+    "${c_green_l}<msg>" "${c_gray}Registered new s6 overlay cron${c_end}" \
+    "${c_green_l}<cron>" "${c_gray}/etc/cron.d/backage${c_end}" \
+    "${c_green_l}<time>" "${c_gray}${TASK_CRON_SYNC}${c_end}"

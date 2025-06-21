@@ -1,0 +1,75 @@
+# #
+#   Backage › Docker-compose.yml
+#
+#   Backage is a self-hostable and free app which allows you to create and utilize an end-point for
+#   Github package badges. Show off stats for packages such as npm, gem, mvn, Gradle, NuGet, or GHCR, which can
+#   be used in combination with Shields.io/json or Shields.io/xml in order to display badges on material such as
+#   websites or your Github, Gitea, or Gitlab README.md. Even if you are not in need of a badge; you can still use
+#   the service to query package statistics, such as weekly or monthly download count, package size, and a
+#   complete version history, all while not exposing any metadata that other registries provide, and utilizing
+#   completely free Github resources.
+#
+#   @url                  https://github.com/ipitio/backage
+#
+#   @image:github         ghcr.io/ipitio/backage:latest
+#                         ghcr.io/ipitio/backage:amd64
+#                         ghcr.io/ipitio/backage:arm64
+#
+#   @image:dockerhub      ipitio/backage:latest
+#                         ipitio/backage:2025.6.20-amd64
+#                         ipitio/backage:2025.6.20-arm64
+# #
+
+services:
+
+    # #
+    #   Service > Backage
+    # #
+
+    backage:
+        container_name: backage
+        image: aetherinox/backage:latest
+      # image: ghcr.io/aetherinox/backage:latest                # Image: Github
+      # image: aetherinox/backage:latest                        # Image: Dockerhub
+      # image: backage:latest                                   # Image: Locally built
+        hostname: backage
+        environment:
+            TZ: "Etc/UTC"
+            GITHUB_PROTO: "https"                               # https or http
+            GITHUB_HOST: "github.com"                           # github, gitea (self-hosted, etc)
+            GITHUB_REPO: "backage"                              # Repo Username
+            GITHUB_OWNER: "aetherinox"                          # Github username for sign-in
+            GITHUB_ACTOR: "aetherinox"                          # Optional; if not set; value will be GITHUB_OWNER
+            GITHUB_EMAIL: "aetherinox@proton.me"                # Github email address
+            GITHUB_BRANCH: "master"                             # branch to close backage from
+            GITHUB_TOKEN: ""
+         #  TASK_CRON_SYNC: "0 */10 * * *"
+            TASK_CRON_SYNC: "*/5 * * * *"
+        volumes:
+            - /etc/timezone:/etc/timezone:ro
+            - /etc/localtime:/etc/localtime:ro
+            - /var/run/docker.sock:/var/run/docker.sock
+            - ./cfg:/config
+           # - ./data:/usr/bin/web
+        ulimits:
+            memlock:
+                soft: -1
+                hard: -1
+        healthcheck:
+            test: [ "CMD", "curl", "--fail", "http://127.0.0.1:4124/api/health?silent=true" ]
+            interval: 30s
+            retries: 5
+        networks:
+            traefik:
+                ipv4_address: '172.18.0.75'
+
+# #
+#   Networks
+#
+#   docker network create --driver=bridge --subnet=172.18.0.0/16 --gateway=172.18.0.1 traefik
+# #
+
+networks:
+    traefik:
+        name: traefik
+        external: true

@@ -1,0 +1,87 @@
+# #
+#   Backage › Traefik Labels
+#
+#   Backage is a self-hostable and free app which allows you to create and utilize an end-point for
+#   Github package badges. Show off stats for packages such as npm, gem, mvn, Gradle, NuGet, or GHCR, which can
+#   be used in combination with Shields.io/json or Shields.io/xml in order to display badges on material such as
+#   websites or your Github, Gitea, or Gitlab README.md. Even if you are not in need of a badge; you can still use
+#   the service to query package statistics, such as weekly or monthly download count, package size, and a
+#   complete version history, all while not exposing any metadata that other registries provide, and utilizing
+#   completely free Github resources.
+#
+#   @url                  https://github.com/ipitio/backage
+#
+#   @image:github         ghcr.io/ipitio/backage:latest
+#                         ghcr.io/ipitio/backage:amd64
+#                         ghcr.io/ipitio/backage:arm64
+#
+#   @image:dockerhub      ipitio/backage:latest
+#                         ipitio/backage:2025.6.20-amd64
+#                         ipitio/backage:2025.6.20-arm64
+# #
+
+services:
+
+    # #
+    #   Service › Backage › Traefik Labels
+    # #
+
+    backage:
+        container_name: backage
+        image: ghcr.io/ipitio/backage:latest                        # Image: Github
+      # image: ipitio/backage:latest                                # Image: Dockerhub
+      # image: backage:latest                                       # Image: Locally built
+        hostname: backage
+        environment:
+            TZ: "Etc/UTC"
+        volumes:
+            - /etc/timezone:/etc/timezone:ro
+            - /etc/localtime:/etc/localtime:ro
+            - /var/run/docker.sock:/var/run/docker.sock
+            - ./config:/config
+            - ./app:/usr/bin/app
+        ulimits:
+            memlock:
+                soft: -1
+                hard: -1
+        labels:
+
+          # #
+          #   General
+          # #
+
+          - traefik.enable=true
+
+          # #
+          #   Scope > http
+          # #
+
+          - traefik.http.routers.backage-http.rule=Host(`backage.localhost`) || Host(`backage.domain.lan`) || Host(`www.backage.domain.lan`) || Host(`${SERVICE_IP}`)
+          - traefik.http.routers.backage-http.service=backage
+          - traefik.http.routers.backage-http.entrypoints=http
+          - traefik.http.routers.backage-http.priority=1
+          - traefik.http.routers.backage-http.middlewares=https-redirect@file
+
+          # #
+          #   Scope > https
+          #
+          #   remove the authentik@file line if you do not wish to use Authentik or middleware
+          #       - traefik.http.routers.backage-https.middlewares=authentik@file
+          # #
+
+          - traefik.http.routers.backage-https.rule=Host(`backage.localhost`) || Host(`backage.domain.lan`)
+          - traefik.http.routers.backage-https.service=backage
+          - traefik.http.routers.backage-https.entrypoints=https
+          - traefik.http.routers.backage-https.priority=1
+          - traefik.http.routers.backage-https.tls=true
+          - traefik.http.routers.backage-https.tls.certresolver=cloudflare
+          - traefik.http.routers.backage-https.tls.domains[0].main=domain.lan
+          - traefik.http.routers.backage-https.tls.domains[0].sans=*.domain.lan
+          - traefik.http.routers.backage-https.middlewares=authentik@file
+
+          # #
+          #   Load Balancer
+          # #
+
+          - traefik.http.services.backage.loadbalancer.server.port=http
+          - traefik.http.services.backage.loadbalancer.server.scheme=4124

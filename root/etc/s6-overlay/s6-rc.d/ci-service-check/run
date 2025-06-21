@@ -1,0 +1,17 @@
+#!/usr/bin/with-contenv bash
+# shellcheck shell=bash
+
+# #
+#   source logger
+# #
+
+source "/usr/bin/helpers/logger/logger.sh"
+
+# #
+#   ci-service-check > finish
+# #
+
+log_ok "core" \
+    "${c_yellow_l}[s6-overl]${c_end}" \
+    "${c_green_l}✅${c_end}" \
+    "${c_green_l}<msg>" "${c_gray}Base container successfully loaded${c_end}"

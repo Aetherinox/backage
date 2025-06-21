@@ -40,11 +40,11 @@ services:
             GITHUB_REPO: "backage"                              # Repo Username
             GITHUB_OWNER: "aetherinox"                          # Github username for sign-in
             GITHUB_ACTOR: "aetherinox"                          # Optional; if not set; value will be GITHUB_OWNER
-            GITHUB_EMAIL: "aetherinox@proton.me"                # Github email address
             GITHUB_BRANCH: "master"                             # branch to close backage from
-            GITHUB_TOKEN: ""
+            GITHUB_TOKEN: "XXXX"
+            LOG_LEVEL: "6"
          #  TASK_CRON_SYNC: "0 */10 * * *"
-            TASK_CRON_SYNC: "*/5 * * * *"
+            TASK_CRON_NOTICE: "*/30 * * * *"
         volumes:
             - /etc/timezone:/etc/timezone:ro
             - /etc/localtime:/etc/localtime:ro

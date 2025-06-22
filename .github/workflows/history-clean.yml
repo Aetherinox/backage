@@ -67,16 +67,27 @@ on:
                 type:           string
 
             # #
-            #   Branch
+            #   Main Branch
             #
-            #   select branch to clean
-            #   you must also run the workflow from that branch
+            #   main branch re-recreate
             # #
 
-            BRANCH:
-                description:    '🌳 Branch'
+            BRANCH_MAIN:
+                description:    '🌳 Main Branch'
                 required:       true
                 default:        'main'
+                type:           string
+
+            # #
+            #   Deployment Environment Name
+            #
+            #   this is the name of the deployment item
+            # #
+
+            DEPLOYMENT_ENV:
+                description:    '📦 Deployment Environment'
+                required:       true
+                default:        'orion'
                 type:           string
 
 # #
@@ -85,7 +96,8 @@ on:
 
 env:
     COMMIT_LABEL:               ${{ github.event.inputs.COMMIT_LABEL || 'cleanup' }}
-    BRANCH:                     ${{ github.event.inputs.BRANCH || 'main' }}
+    BRANCH_MAIN:                ${{ github.event.inputs.BRANCH_MAIN || 'main' }}
+    DEPLOYMENT_ENV:             ${{ github.event.inputs.DEPLOYMENT_ENV || 'orion' }}
     BOT_NAME_1:                 EuropaServ
     BOT_NAME_2:                 BinaryServ
     BOT_NAME_DEPENDABOT:        dependabot[bot]
@@ -99,11 +111,9 @@ jobs:
     history-clean:
         name: >-
             🧹 History › Clean
-        runs-on: ubuntu-latest
-      # runs-on: apollo-x64
-        timeout-minutes: 15
-        permissions:
-            contents: write
+      # runs-on: ubuntu-latest
+        runs-on: apollo-x64
+        timeout-minutes: 5
         steps:
 
             # #
@@ -113,7 +123,7 @@ jobs:
             - name: '☑️ Checkout'
               uses: actions/checkout@v4
               with:
-                  ref: ${{ env.BRANCH }}
+                  fetch-depth: 0
 
             # #
             #   History › Clean › Job Information
@@ -244,7 +254,7 @@ jobs:
                   now=$(date -u '+%m/%d/%Y %H:%M')
                   commit_label="${{ env.COMMIT_LABEL }}" >> $GITHUB_ENV
                   echo -e "$commit_label"
-                  commit_message="chore(maint): \\\`️️🧹 $commit_label 🧹\\\` \\\`$now UTC\\\`" >> $GITHUB_ENV
+                  commit_message="\\\`️️🧹 $commit_label 🧹\\\` \\\`$now UTC\\\`" >> $GITHUB_ENV
                   echo -e "$commit_message"
                   echo "COMMIT_MESSAGE=$(echo $commit_message)" >> $GITHUB_ENV
                   echo "NOW=$(echo $now)" >> $GITHUB_ENV
@@ -280,25 +290,24 @@ jobs:
                     git commit -m "${{ env.COMMIT_MESSAGE }}"
 
                     # Delete the old main branch
-                    git branch -D ${{ env.BRANCH }}
+                    git branch -D ${{ env.BRANCH_MAIN }}
 
                     # Rename the new orphan branch to main
-                    git branch -m ${{ env.BRANCH }}
+                    git branch -m ${{ env.BRANCH_MAIN }}
 
                     # Force push the new main branch to the remote repository
-                    git push -f origin ${{ env.BRANCH }}
+                    git push -f origin ${{ env.BRANCH_MAIN }}
 
             # #
             #   History › Clean › References
             # #
 
             - name: >-
-                  🗑️ Garbage Collection (Aggressive)
+                  🗑️ Clean References
               run: |
                     # Remove remote-tracking references to deleted branches (optional)
                     git fetch origin --prune
-                    git repack
-                    git prune-packed
+
                     git reflog expire --expire=now --all
                     git gc --prune=now --aggressive
 

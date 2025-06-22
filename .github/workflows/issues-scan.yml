@@ -58,6 +58,11 @@ on:
 # #
 
 env:
+    DISCORD_BOT_NAME:                 'Europa'
+    DISCORD_BOT_AVATAR:               'https://i.imgur.com/UqwMom1.jpeg'
+    DISCORD_BOT_EMBED_AUTHOR_ICON:    'https://avatars.githubusercontent.com/u/200161462'
+    DISCORD_BOT_EMBED_THUMBNAIL:      'https://avatars.githubusercontent.com/u/200161462'
+
     LABEL_CHECK_STATUS_FAILED:      AC › Failed
     LABEL_CHECK_REVIEW_READY:       AC › Passed
     LABEL_CHECK_CHANGES_REQ:        AC › Changes Required
@@ -155,8 +160,8 @@ jobs:
     job-pr-scan:
         name: >-
             🎫 Issues › Autoscan
-        runs-on: ubuntu-latest
-      # runs-on: apollo-x64
+      # runs-on: ubuntu-latest
+        runs-on: apollo-x64
         timeout-minutes: 5
         permissions:
             contents: read

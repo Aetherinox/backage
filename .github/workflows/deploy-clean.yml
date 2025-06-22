@@ -26,7 +26,7 @@
 #                       secrets.DISCORD_WEBHOOK_CHAN_GITHUB_RELEASES                discord webhook to report release notifications from github to discord
 #                       secrets.DISCORD_WEBHOOK_CHAN_GITHUB_WORKFLOWS               discord webhook to report workflow notifications from github to discord
 #                       secrets.DISCORD_WEBHOOK_CHAN_GITHUB_UPDATES                 discord webhook to report activity notifications from github to discord
-#   
+#
 #
 #   @local              these workflows can be tested locally through the use of `act`
 #                           https://github.com/nektos/act
@@ -58,7 +58,7 @@ on:
 
             # #
             #   Deployment Environment Name
-            #   
+            #
             #   this is the name of the deployment item
             # #
 
@@ -80,17 +80,69 @@ on:
                 default:        '1000'
                 type:           string
 
+            # #
+            #   Discord Bot › Name
+            #
+            #   The discord bot name
+            # #
+
+            DISCORD_BOT_NAME:
+                description:    '🤖 Bot Name'
+                required:       true
+                default:        'Europa'
+                type:           string
+
+            # #
+            #   Discord Bot › Avatar
+            #
+            #   The discord bot avatar to show; let's use some weird picture
+            # #
+
+            DISCORD_BOT_AVATAR:
+                description:    '🤖 Avatar URL'
+                required:       true
+                default:        'https://i.imgur.com/UqwMom1.jpeg'
+                type:           string
+
+            # #
+            #   Discord Bot › Author Icon URL
+            #
+            #   A small picture shown to the top-right of each post
+            # #
+
+            DISCORD_BOT_EMBED_AUTHOR_ICON:
+                description:    '🤖 Embed Author Icon'
+                required:       true
+                default:        'https://avatars.githubusercontent.com/u/200161462'
+                type:           string
+
+            # #
+            #   Discord Bot › Thumbnail URL
+            #
+            #   A small picture shown to the top-right of each post
+            # #
+
+            DISCORD_BOT_EMBED_THUMBNAIL:
+                description:    '🤖 Embed Thumbnail URL'
+                required:       true
+                default:        'https://avatars.githubusercontent.com/u/200161462'
+                type:           string
+
 # #
 #   environment variables
 # #
 
 env:
-    DEPLOYMENT_ENV:             ${{ github.event.inputs.DEPLOYMENT_ENV || 'orion' }}
-    DEPLOYMENT_DELAY:           ${{ github.event.inputs.DEPLOYMENT_DELAY || '1000' }}
-    BOT_NAME_1:                 EuropaServ
-    BOT_NAME_2:                 BinaryServ
-    BOT_NAME_DEPENDABOT:        dependabot[bot]
-    BOT_NAME_RENOVATE:          renovate[bot]
+    DEPLOYMENT_ENV:                   ${{ github.event.inputs.DEPLOYMENT_ENV || 'orion' }}
+    DEPLOYMENT_DELAY:                 ${{ github.event.inputs.DEPLOYMENT_DELAY || '1000' }}
+    DISCORD_BOT_NAME:                 ${{ github.event.inputs.DISCORD_BOT_NAME || 'Europa' }}
+    DISCORD_BOT_AVATAR:               ${{ github.event.inputs.DISCORD_BOT_AVATAR || 'https://i.imgur.com/UqwMom1.jpeg' }}
+    DISCORD_BOT_EMBED_AUTHOR_ICON:    ${{ github.event.inputs.DISCORD_BOT_EMBED_AUTHOR_ICON || 'https://avatars.githubusercontent.com/u/200161462' }}
+    DISCORD_BOT_EMBED_THUMBNAIL:      ${{ github.event.inputs.DISCORD_BOT_EMBED_THUMBNAIL || 'https://avatars.githubusercontent.com/u/200161462' }}
+    BOT_NAME_1:                       EuropaServ
+    BOT_NAME_2:                       BinaryServ
+    BOT_NAME_DEPENDABOT:              dependabot[bot]
+    BOT_NAME_RENOVATE:                renovate[bot]
 
 # #
 #   jobs
@@ -100,15 +152,15 @@ jobs:
     cleanup:
         name: >-
             🧹 Deployments › Clean
-        runs-on: ubuntu-latest
-      # runs-on: apollo-x64
+      # runs-on: ubuntu-latest
+        runs-on: apollo-x64
         timeout-minutes: 5
         permissions: write-all
 
         steps:
 
             # #
-            #   Deployments › Clean › Checkout
+            #   Deployments › Cleanup › Checkout
             # #
 
             - name: '☑️ Checkout'
@@ -117,7 +169,7 @@ jobs:
                   fetch-depth: 0
 
             # #
-            #   Deployments › Clean › Job Information
+            #   Deployments › Cleanup › Job Information
             # #
 
             - name: >-
@@ -126,7 +178,7 @@ jobs:
               id: 'context'
 
             # #
-            #   Deployments › Clean › Start
+            #   Deployments › Cleanup › Start
             # #
 
             - name: >-
@@ -226,7 +278,7 @@ jobs:
                   echo "‎"
 
             # #
-            #   Deployments › Clean › Start
+            #   Deployments › Cleanup › Start
             # #
 
             - name: >-
@@ -239,7 +291,7 @@ jobs:
                   delay: "${{ env.DEPLOYMENT_DELAY }}"
 
             # #
-            #   Deployments › Clean › Get Weekly Commits
+            #   Deployments › Cleanup › Get Weekly Commits
             # #
 
             - name: >-
@@ -248,4 +300,3 @@ jobs:
                   echo 'WEEKLY_COMMITS<<EOF' >> $GITHUB_ENV
                   git log --format="[\`%h\`](${{ github.server_url }}/${{ github.repository }}/commit/%H) %s - %an" --since=7.days >> $GITHUB_ENV
                   echo 'EOF' >> $GITHUB_ENV
-

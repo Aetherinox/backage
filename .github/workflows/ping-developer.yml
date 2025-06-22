@@ -2,9 +2,7 @@
 #   @type               github workflow
 #   @author             Aetherinox
 #   @url                https://github.com/Aetherinox
-#   @usage              cleans all commit history for a repository
-#                       edit the 'environment:' to determine which deployment to keep clean
-#                           - can be ran manually
+#   @usage              pings the developer when an issue comment is made
 #
 #   @secrets            secrets.SELF_TOKEN                                          self github personal access token (fine-grained)
 #                       secrets.SELF_TOKEN_CL                                       self github personal access token (classic)
@@ -27,65 +25,33 @@
 #                       secrets.DISCORD_WEBHOOK_CHAN_GITHUB_WORKFLOWS               discord webhook to report workflow notifications from github to discord
 #                       secrets.DISCORD_WEBHOOK_CHAN_GITHUB_UPDATES                 discord webhook to report activity notifications from github to discord
 #
-#
 #   @local              these workflows can be tested locally through the use of `act`
 #                           https://github.com/nektos/act
 #                       Extract act to folder
 #                       Add system env var with path to act.exe
 #                       Run the commands:
 #                           git pull https://github.com/username/repo
-#                           act -W .github/workflows/history-clean.yml -P ubuntu-latest=catthehacker/ubuntu:full-22.04
-#                           act -W .github/workflows/history-clean.yml -s TOKEN_CL=XXXXXXXXXX --pull=false
+#                           act -W .github/workflows/ping-developer.yml -P ubuntu-latest=catthehacker/ubuntu:full-22.04
+#                           act -W .github/workflows/ping-developer.yml -s TOKEN_CL=XXXXXXXXXX --pull=false
 # #
 
-name: '🧹 History › Clean'
-run-name: '🧹 History › Clean'
+name: '💬 Ping › Developer'
+run-name: '💬 Ping › Developer'
 
 # #
 #   triggers
 # #
 
 on:
-
-    # #
-    #   Trigger > Workflow Dispatch
-    # #
-
-    workflow_dispatch:
-        inputs:
-
-            # #
-            #   Commit Label
-            #
-            #   the label to use when repository is cleaned
-            # #
-
-            COMMIT_LABEL:
-                description:    '🏷️ Commit Label'
-                required:       true
-                default:        'cleanup'
-                type:           string
-
-            # #
-            #   Branch
-            #
-            #   select branch to clean
-            #   you must also run the workflow from that branch
-            # #
-
-            BRANCH:
-                description:    '🌳 Branch'
-                required:       true
-                default:        'main'
-                type:           string
+    issue_comment:
+        types: [created]
 
 # #
 #   environment variables
 # #
 
 env:
-    COMMIT_LABEL:               ${{ github.event.inputs.COMMIT_LABEL || 'cleanup' }}
-    BRANCH:                     ${{ github.event.inputs.BRANCH || 'main' }}
+    DEPLOYMENT_ENV:             ${{ github.event.inputs.DEPLOYMENT_ENV || 'orion' }}
     BOT_NAME_1:                 EuropaServ
     BOT_NAME_2:                 BinaryServ
     BOT_NAME_DEPENDABOT:        dependabot[bot]
@@ -93,30 +59,32 @@ env:
 
 # #
 #   jobs
+#
+#   env not available for job.if
 # #
 
 jobs:
-    history-clean:
+    deploy:
         name: >-
-            🧹 History › Clean
+            💬 Issue › Accept
         runs-on: ubuntu-latest
       # runs-on: apollo-x64
-        timeout-minutes: 15
-        permissions:
-            contents: write
+        timeout-minutes: 5
+        if: |
+            contains(github.event.comment.body, '/ping')
         steps:
 
             # #
-            #   History › Clean › Checkout
+            #   Ping › Checkout
             # #
 
             - name: '☑️ Checkout'
               uses: actions/checkout@v4
               with:
-                  ref: ${{ env.BRANCH }}
+                  fetch-depth: 0
 
             # #
-            #   History › Clean › Job Information
+            #   Ping › Job Information
             # #
 
             - name: >-
@@ -125,7 +93,7 @@ jobs:
               id: 'context'
 
             # #
-            #   History › Clean › Start
+            #   Ping › Start
             # #
 
             - name: >-
@@ -225,89 +193,131 @@ jobs:
                   echo "‎"
 
             # #
-            #   History › Clean › Git Identify
+            #   Ping › Developer › Send Mail
+            #   
+            #   Add Label to accepted PR
+            #   
+            #   port 465
+            #       server_port: 465
+            #       secure: true
+            #       ignore_cert: false
+            #   
+            #   port 587
+            #       server_port: 587
+            #       secure: false
             # #
 
             - name: >-
-                  🪪 Configure Git Identity
-              run: |
-                    git config --local user.email "github-actions[bot]@users.noreply.github.com"
-                    git config --local user.name "github-actions[bot]"
-
-            # #
-            #   History › Clean › Pre-Commit
-            # #
-
-            - name: >-
-                  📦 Commit › Pre-commit
-              run: |
-                  now=$(date -u '+%m/%d/%Y %H:%M')
-                  commit_label="${{ env.COMMIT_LABEL }}" >> $GITHUB_ENV
-                  echo -e "$commit_label"
-                  commit_message="chore(maint): \\\`️️🧹 $commit_label 🧹\\\` \\\`$now UTC\\\`" >> $GITHUB_ENV
-                  echo -e "$commit_message"
-                  echo "COMMIT_MESSAGE=$(echo $commit_message)" >> $GITHUB_ENV
-                  echo "NOW=$(echo $now)" >> $GITHUB_ENV
-
-            # #
-            #   History › Clean › Pre-Commit › Debug
-            # #
-
-            - name: >-
-                  📦 Commit › Pre-commit › Debug
-              run: |
-                  echo -e "―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――"
-                  echo -e " Printing Values"
-                  echo -e "―――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――――"
-                  echo -e " env.COMMIT_LABEL .................... ${{ env.COMMIT_LABEL }}"
-                  echo -e " env.COMMIT_MESSAGE .................. ${{ env.COMMIT_MESSAGE }}"
-                  echo -e " env.NOW ............................. ${{ env.NOW }}"
-
-            # #
-            #   History › Clean › Start
-            # #
-
-            - name: >-
-                  🧹 Clean Repo History
-              run: |
-                    # Create a new orphan branch
-                    git checkout --orphan temp-branch
-
-                    # Add all files to the new branch
-                    git add -A
-
-                    # Commit the files to the new branch
-                    git commit -m "${{ env.COMMIT_MESSAGE }}"
-
-                    # Delete the old main branch
-                    git branch -D ${{ env.BRANCH }}
-
-                    # Rename the new orphan branch to main
-                    git branch -m ${{ env.BRANCH }}
-
-                    # Force push the new main branch to the remote repository
-                    git push -f origin ${{ env.BRANCH }}
-
-            # #
-            #   History › Clean › References
-            # #
-
-            - name: >-
-                  🗑️ Garbage Collection (Aggressive)
-              run: |
-                    # Remove remote-tracking references to deleted branches (optional)
-                    git fetch origin --prune
-                    git repack
-                    git prune-packed
-                    git reflog expire --expire=now --all
-                    git gc --prune=now --aggressive
-
-            # #
-            #   History › Clean › Commit
-            # #
-
-            - name: >-
-                  📦 Commit › Execute
-              uses: stefanzweifel/git-auto-commit-action@v6
+                  📨 Send mail
+              id: task_ping_developer_mail
+              uses: dawidd6/action-send-mail@v5
               with:
-                  commit_message: ${{ env.COMMIT_MESSAGE }}
+                  server_address: ${{ secrets.EMAIL_SMTP }}
+                  server_port: 465
+                  secure: true
+                  username: ${{ secrets.EMAIL_FROM }}
+                  password: ${{ secrets.EMAIL_KEY }}
+                  subject: "Github: Ping notification from ${{ github.repository }}"
+                  to: ${{ secrets.EMAIL_TO }}
+                  from: ${{ secrets.EMAIL_FROM }}
+                  html_body: |
+                      <!DOCTYPE html>
+                      <html>
+                      <head>
+                      <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+                      <title>Title</title>
+
+                      <style>
+                      body {
+                      background: url('https://images.unsplash.com/photo-1541422348463-9bc715520974?fm=jpg&q=60&w=3000&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8M3x8ZGFyayUyMG1vdW50YWlufGVufDB8fDB8fHww');
+                      font-size:9pt;
+                      margin:0;
+                      padding:0;
+                      }
+                      .background-overlay {
+                      background-color: #1111119f;
+                      }
+                      .background-header {
+                      background: url('https://process.fs.teachablecdn.com/ADNupMnWyR7kCWRvm76Laz/resize=width:705/https://cdn.filestackcontent.com/MipxnobQRRS5h7raz9aM');
+                      background-size: cover;
+                      background-size: 100%;
+                      background-color:#1b1b1b;
+                      padding:5px;
+                      height:100px;
+                      }
+                      </style>
+                      </head>
+
+                      <body>
+                      <div class="background-overlay">
+                      <center>
+                      <div class="background-header">
+                      <a href="https://github.com/${{ github.repository }}"><img style="height:80px;padding-top:10px;" src="https://cdn0.iconfinder.com/data/icons/shift-logotypes/32/Github-512.png"></a>
+                      </div>
+                      </center>
+
+                      <div style="font-size:9pt;padding: 20px;color:#FFF;">
+                      <h3><span style="font-size:9pt;color:#cc6613;">[Github]</span> <span style="font-size:9pt;color:#FFF;">Dear ${{github.repository_owner}},</span></h3>
+                      <p style="font-size:9pt;color:#FFF;"><br />You have received a ping notification from <a href="https://github.com/${{ github.repository }}">${{ github.repository }}</a> by <a href="https://github.com/${{ github.event.comment.user.login }}">${{ github.event.comment.user.login }}</a>.</p>
+                      <br>
+                      <br>
+                      <center>
+                      <table cellspacing="0" cellpadding="0" width="40%" class="center">
+                      <tbody>
+                      <tr>
+                      <td
+                      style="font-size:9pt;background-color:#8a2138;color:#FFF;padding:6px;padding-left:10px;"><b>Repository</b></td>
+                      <td style="font-size:9pt;padding-left:5px;color:#b3b3b3;background-color:#1b1b1b;padding-left:10px;">${{ github.repository }}</td>
+                      </tr>
+                      <tr>
+                      <td
+                      style="font-size:9pt;background-color:#8a2138;color:#FFF;padding:6px;padding-left:10px;"><b>Date</b></td>
+                      <td style="font-size:9pt;padding-left:5px;color:#b3b3b3;background-color:#0f0f0f;padding-left:10px;">${{ env.NOW }}</td>
+                      </tr>
+                      <tr>
+                      <td
+                      style="font-size:9pt;background-color:#8a2138;color:#FFF;padding:6px;padding-left:10px;"><b>Commenter</b></td>
+                      <td style="font-size:9pt;padding-left:5px;color:#b3b3b3;background-color:#1b1b1b;padding-left:10px;">${{ github.event.comment.user.login }}</td>
+                      </tr>
+                      <tr>
+                      <td
+                      style="font-size:9pt;background-color:#8a2138;color:#FFF;padding:6px;padding-left:10px;"><b>Issue #</b></td>
+                      <td style="font-size:9pt;padding-left:5px;color:#b3b3b3;background-color:#0f0f0f;padding-left:10px;">${{ github.event.issue.number }}</td>
+                      </tr>
+                      <tr>
+                      <td
+                      style="font-size:9pt;background-color:#8a2138;color:#FFF;padding:6px;padding-left:10px;"><b>Action</b></td>
+                      <td style="font-size:9pt;padding-left:5px;color:#b3b3b3;background-color:#1b1b1b;padding-left:10px;">Notification</td>
+                      </tr>
+                      </tbody>
+                      </table>
+                      </center>
+
+                      <br><br>
+
+                      <center>
+                      <div style="font-family:Consolas;">
+
+                      <textarea readonly=true style="font-size:9pt;width:60%;background-color:#363636;color:#FFF;padding:15px;border:1px solid #5a5a5a;" id="w3review" name="w3review" rows="20" cols="100">
+                      ${{ github.event.comment.body }}
+                      </textarea>
+
+                      </div>
+                      </center>
+
+                      <p>&nbsp;</p>
+                      <p style="color:#FFF;"><br /> ~ Github
+                      </p>
+                      </div>
+
+                      <br /><br />
+
+                      <div style="background-color:#1b1b1b;padding:5px;line-height:70px;height:70px;text-align:center;">
+                      <span style="color:#FFF;font-size:8pt;">Copyright &copy; ${{ env.YEAR }}</span>
+                      </div>
+                      </div>
+                      </body>
+                      </html>
+                  ignore_cert: true
+                  convert_markdown: true
+                  priority: normal

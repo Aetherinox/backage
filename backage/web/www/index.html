@@ -39,11 +39,11 @@
                         <div class="introduction-body">
                             <div class="logo-main"><img class="backage" src="backage.png"></div>
                             <div class="desc">
-                                Backage is a self-hostable and free app which allows you to create and utilize an end-point for Github package 
+                                Backage is a self-hostable and free app which allows you to create and utilize an end-point for Github package
                                 badges. Show off stats for packages such as npm, gem, mvn, Gradle, NuGet, or GHCR, which can be used in
-                                combination with 
-                                <a href="https://shields.io/badges/dynamic-json-badge" data-bs-toggle="tooltip" title="Create dynamic JSON badge">Shields.io/json</a> 
-                                or 
+                                combination with
+                                <a href="https://shields.io/badges/dynamic-json-badge" data-bs-toggle="tooltip" title="Create dynamic JSON badge">Shields.io/json</a>
+                                or
                                 <a href="https://shields.io/badges/dynamic-xml-badge" data-bs-toggle="tooltip" title="Create dynamic XML badge">Shields.io/xml</a>
                                 in order to display badges on material such as websites or your Github, Gitea, or Gitlab README.md.
 
@@ -366,7 +366,8 @@
                     url: 'api/health',
                     type: 'GET',
                     data: {
-                        query: 'healthcheck'
+                        query: 'healthcheck',
+                        silent: false
                     },
                     beforeSend: function( data )
                     {
@@ -424,7 +425,8 @@
                     url: 'api/health',
                     type: 'GET',
                     data: {
-                        query: 'uptime'
+                        query: 'uptime',
+                        silent: true
                     },
                     success: function( data )
                     {
@@ -470,7 +472,8 @@
                     url: 'api/restart',
                     type: 'GET',
                     data: {
-                        query: 'sync'
+                        query: 'sync',
+                        silent: false
                     },
                     beforeSend: function( data )
                     {
